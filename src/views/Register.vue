@@ -1,18 +1,78 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
-
-const name = ref('')
+const companyName = ref('')
+const firstName = ref('')
+const lastName = ref('')
 const email = ref('')
 const password = ref('')
+const passwordConfirmation = ref('')
+const isLoading = ref(false)
 
-const handleRegister = () => {
-  console.log('Register attempt:', { name: name.value, email: email.value })
-  // Logic for registration goes here
-  // After success, redirect to login or dashboard
-  // router.push('/login')
+const handleRegister = async () => {
+  if (password.value !== passwordConfirmation.value) {
+    Swal.fire({
+      icon: 'error',
+      title: 'Ops...',
+      text: 'As senhas não coincidem. Verifique e tente novamente.',
+      confirmButtonColor: '#2563eb',
+      customClass: { icon: 'swal-icon-pulse-slow' }
+    })
+    return
+  }
+  
+  isLoading.value = true
+  try {
+    const response = await axios.post('http://localhost:3000/users', {
+      user: {
+        company_name: companyName.value,
+        first_name: firstName.value,
+        last_name: lastName.value,
+        email: email.value,
+        password: password.value,
+        password_confirmation: passwordConfirmation.value
+      }
+    })
+    
+    await Swal.fire({
+      icon: 'success',
+      title: 'Bem-vindo(a)!',
+      text: 'Conta criada com sucesso. Você já pode acessar o sistema.',
+      confirmButtonColor: '#2563eb'
+    })
+    router.push('/login')
+  } catch (error) {
+    console.error("Registration error", error)
+    let errorMessage = 'Erro ao criar conta. Verifique os dados e tente novamente.'
+    
+    if (error.response && error.response.data && error.response.data.errors) {
+      const rawError = error.response.data.errors.join(', ')
+      
+      if (rawError.includes('Email has already been taken')) {
+        errorMessage = 'Este e-mail já está cadastrado em nosso sistema. Faça o login ou use outro e-mail.'
+      } else if (rawError.includes('Password is too short')) {
+        errorMessage = 'A senha escolhida é muito curta. Use no mínimo 6 caracteres.'
+      } else if (rawError.includes("Email can't be blank")) {
+        errorMessage = 'O campo de e-mail não pode ficar em branco.'
+      } else {
+        errorMessage = rawError.replace('Validation failed: ', '')
+      }
+    }
+    
+    Swal.fire({
+      icon: 'error',
+      title: 'Não foi possível criar',
+      text: errorMessage,
+      confirmButtonColor: '#2563eb',
+      customClass: { icon: 'swal-icon-pulse-slow' }
+    })
+  } finally {
+    isLoading.value = false
+  }
 }
 </script>
 
@@ -26,40 +86,42 @@ const handleRegister = () => {
       </div>
 
       <form @submit.prevent="handleRegister" class="auth-form">
+
         <div class="form-group">
-          <label for="name">Nome Completo</label>
-          <input 
-            type="text" 
-            id="name" 
-            v-model="name" 
-            placeholder="João Silva" 
-            required 
-          />
+          <label for="companyName">Nome da Imobiliária</label>
+          <input type="text" id="companyName" v-model="companyName" placeholder="Minha Imobiliária" required />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="firstName">Nome</label>
+            <input type="text" id="firstName" v-model="firstName" placeholder="João" required />
+          </div>
+          <div class="form-group">
+            <label for="lastName">Sobrenome</label>
+            <input type="text" id="lastName" v-model="lastName" placeholder="Silva" required />
+          </div>
         </div>
 
         <div class="form-group">
           <label for="email">E-mail Corporativo</label>
-          <input 
-            type="email" 
-            id="email" 
-            v-model="email" 
-            placeholder="joao@imobiliaria.com" 
-            required 
-          />
+          <input type="email" id="email" v-model="email" placeholder="joao@imobiliaria.com" required />
         </div>
 
-        <div class="form-group">
-          <label for="password">Senha</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="password" 
-            placeholder="Mínimo de 8 caracteres" 
-            required 
-          />
+        <div class="form-row">
+          <div class="form-group">
+            <label for="password">Senha</label>
+            <input type="password" id="password" v-model="password" placeholder="Mín. 8 caracteres" required />
+          </div>
+          <div class="form-group">
+            <label for="passwordConfirmation">Confirme a Senha</label>
+            <input type="password" id="passwordConfirmation" v-model="passwordConfirmation" placeholder="Repita" required />
+          </div>
         </div>
 
-        <button type="submit" class="btn-primary">Criar Conta</button>
+        <button type="submit" class="btn-primary" :disabled="isLoading">
+          {{ isLoading ? 'Criando Conta...' : 'Criar Conta' }}
+        </button>
       </form>
 
       <div class="auth-footer">
@@ -76,26 +138,28 @@ const handleRegister = () => {
   justify-content: center;
   min-height: 100vh;
   padding: 1rem;
+  background: var(--bg-color);
 }
 
 .auth-card {
   background: var(--card-bg);
   width: 100%;
-  max-width: 420px;
+  max-width: 480px; /* Slightly wider to accommodate side-by-side fields */
   border-radius: 12px;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
-  padding: 2.5rem;
+  padding: 2rem;
+  margin: auto;
 }
 
 .auth-header {
   text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.5rem;
 
   .logo {
     font-size: 1.8rem;
     font-weight: 700;
     color: var(--text-main);
-    margin-bottom: 1.5rem;
+    margin-bottom: 1rem;
     
     span {
       color: var(--primary);
@@ -103,21 +167,27 @@ const handleRegister = () => {
   }
 
   h2 {
-    font-size: 1.5rem;
+    font-size: 1.4rem;
     font-weight: 600;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.3rem;
   }
 
   p {
     color: var(--text-muted);
-    font-size: 0.95rem;
+    font-size: 0.9rem;
   }
 }
 
 .auth-form {
   display: flex;
   flex-direction: column;
-  gap: 1.2rem;
+  gap: 1rem; /* Reduced gap */
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
 }
 
 .form-group {
@@ -132,6 +202,8 @@ const handleRegister = () => {
   }
 
   input {
+    width: 100%;
+    box-sizing: border-box;
     padding: 0.75rem 1rem;
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -172,5 +244,16 @@ const handleRegister = () => {
   a {
     font-weight: 500;
   }
+}
+
+/* SweetAlert2 Custom Animations */
+@keyframes slowPulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05) translateY(-3px); }
+  100% { transform: scale(1); }
+}
+
+:deep(.swal-icon-pulse-slow) {
+  animation: slowPulse 2.5s ease-in-out infinite !important;
 }
 </style>

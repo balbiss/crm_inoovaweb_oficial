@@ -6,47 +6,36 @@ import Swal from 'sweetalert2'
 
 const router = useRouter()
 const email = ref('')
-const password = ref('')
 const isLoading = ref(false)
 
-const handleLogin = async () => {
+const handleForgotPassword = async () => {
+  if (!email.value) return
+  
   isLoading.value = true
   
   try {
-    const response = await axios.post('http://localhost:3000/users/sign_in', {
+    await axios.post('http://localhost:3000/users/password', {
       user: {
-        email: email.value,
-        password: password.value
+        email: email.value
       }
     })
     
-    // Devise-JWT returns the token in the Authorization header
-    const token = response.headers.authorization
-    if (token) {
-      localStorage.setItem('auth_token', token)
-    }
-    
-    // Save user info just in case
-    if (response.data && response.data.user) {
-      localStorage.setItem('user', JSON.stringify(response.data.user))
-    }
-    
     await Swal.fire({
       icon: 'success',
-      title: 'Login realizado!',
-      text: 'Bem-vindo de volta ao Innovaweb.',
-      confirmButtonColor: '#2563eb',
-      timer: 1500,
-      showConfirmButton: false
+      title: 'E-mail enviado!',
+      text: 'Se este e-mail estiver cadastrado, você receberá um link para redefinir sua senha.',
+      confirmButtonColor: '#2563eb'
     })
     
-    router.push('/dashboard') // Or wherever the kanban is
+    router.push('/login')
   } catch (error) {
-    console.error("Login error", error)
+    console.error("Forgot password error", error)
+    // Para segurança, a maioria dos sistemas diz "E-mail enviado" mesmo se falhar, mas 
+    // como estamos no desenvolvimento do nosso SaaS, vamos mostrar o erro se houver
     Swal.fire({
       icon: 'error',
-      title: 'Acesso Negado',
-      text: 'E-mail ou senha incorretos. Verifique e tente novamente.',
+      title: 'Ops...',
+      text: 'Houve um problema ao processar sua solicitação. Verifique o e-mail e tente novamente.',
       confirmButtonColor: '#2563eb',
       customClass: { icon: 'swal-icon-pulse-slow' }
     })
@@ -61,13 +50,13 @@ const handleLogin = async () => {
     <div class="auth-card">
       <div class="auth-header">
         <h1 class="logo">Innova<span>web</span></h1>
-        <h2>Bem-vindo de volta</h2>
-        <p>Acesse sua conta para gerenciar seus imóveis e leads.</p>
+        <h2>Recuperar Senha</h2>
+        <p>Digite seu e-mail para receber um link de redefinição de senha.</p>
       </div>
 
-      <form @submit.prevent="handleLogin" class="auth-form">
+      <form @submit.prevent="handleForgotPassword" class="auth-form">
         <div class="form-group">
-          <label for="email">E-mail</label>
+          <label for="email">E-mail Corporativo</label>
           <input 
             type="email" 
             id="email" 
@@ -77,32 +66,13 @@ const handleLogin = async () => {
           />
         </div>
 
-        <div class="form-group">
-          <label for="password">Senha</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="password" 
-            placeholder="••••••••" 
-            required 
-          />
-        </div>
-
-        <div class="form-actions">
-          <label class="remember-me">
-            <input type="checkbox" />
-            Lembrar de mim
-          </label>
-          <router-link to="/forgot-password" class="forgot-password">Esqueceu a senha?</router-link>
-        </div>
-
         <button type="submit" class="btn-primary" :disabled="isLoading">
-          {{ isLoading ? 'Entrando...' : 'Entrar' }}
+          {{ isLoading ? 'Enviando...' : 'Enviar Link de Recuperação' }}
         </button>
       </form>
 
       <div class="auth-footer">
-        <p>Ainda não tem uma conta? <router-link to="/register">Crie uma agora</router-link></p>
+        <p>Lembrou da senha? <router-link to="/login">Voltar ao Login</router-link></p>
       </div>
     </div>
   </div>
@@ -150,6 +120,7 @@ const handleLogin = async () => {
   p {
     color: var(--text-muted);
     font-size: 0.95rem;
+    line-height: 1.4;
   }
 }
 
@@ -171,6 +142,8 @@ const handleLogin = async () => {
   }
 
   input {
+    width: 100%;
+    box-sizing: border-box;
     padding: 0.75rem 1rem;
     border: 1px solid var(--border-color);
     border-radius: 8px;
@@ -182,25 +155,6 @@ const handleLogin = async () => {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px var(--input-focus);
     }
-  }
-}
-
-.form-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  font-size: 0.85rem;
-
-  .remember-me {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    cursor: pointer;
-    color: var(--text-muted);
-  }
-
-  .forgot-password {
-    font-weight: 500;
   }
 }
 
@@ -218,6 +172,11 @@ const handleLogin = async () => {
 
   &:hover {
     background: var(--primary-hover);
+  }
+  
+  &:disabled {
+    background: #94a3b8;
+    cursor: not-allowed;
   }
 }
 
