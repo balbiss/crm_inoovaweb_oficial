@@ -74,6 +74,46 @@ const router = createRouter({
           component: Properties
         },
         {
+          path: 'imoveis/novo',
+          name: 'imoveis_novo',
+          component: () => import('../views/PropertyForm.vue')
+        },
+        {
+          path: 'imoveis/:id/editar',
+          name: 'imoveis_editar',
+          component: () => import('../views/PropertyForm.vue')
+        },
+        {
+          path: 'condominios',
+          name: 'condominios',
+          component: () => import('../views/Condominiums.vue')
+        },
+        {
+          path: 'condominios/novo',
+          name: 'condominios_novo',
+          component: () => import('../views/CondominiumForm.vue')
+        },
+        {
+          path: 'condominios/:id/editar',
+          name: 'condominios_editar',
+          component: () => import('../views/CondominiumForm.vue')
+        },
+        {
+          path: 'agendamentos',
+          name: 'agendamentos',
+          component: () => import('../views/Appointments.vue')
+        },
+        {
+          path: 'agendamentos/novo',
+          name: 'agendamentos_novo',
+          component: () => import('../views/AppointmentForm.vue')
+        },
+        {
+          path: 'agendamentos/:id/editar',
+          name: 'agendamentos_editar',
+          component: () => import('../views/AppointmentForm.vue')
+        },
+        {
           path: 'funil',
           name: 'funil',
           component: () => import('../views/Kanban.vue')
@@ -92,6 +132,41 @@ const router = createRouter({
           path: 'settings/inboxes/new',
           name: 'settings_inboxes_new',
           component: () => import('../views/NewInbox.vue')
+        },
+        {
+          path: 'suporte',
+          name: 'suporte',
+          component: () => import('../views/Support.vue')
+        }
+      ]
+    },
+    {
+      path: '/admin',
+      component: () => import('../views/admin/AdminLayout.vue'),
+      children: [
+        {
+          path: '',
+          redirect: '/admin/dashboard'
+        },
+        {
+          path: 'dashboard',
+          name: 'admin_dashboard',
+          component: () => import('../views/admin/AdminDashboard.vue')
+        },
+        {
+          path: 'empresas',
+          name: 'admin_empresas',
+          component: () => import('../views/admin/AdminCompanies.vue')
+        },
+        {
+          path: 'integracoes',
+          name: 'admin_integracoes',
+          component: () => import('../views/admin/AdminIntegrations.vue')
+        },
+        {
+          path: 'suporte',
+          name: 'admin_suporte',
+          component: () => import('../views/admin/AdminSupport.vue')
         }
       ]
     }
@@ -100,8 +175,15 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const isAuthenticated = !!localStorage.getItem('auth_token')
+  let user = null
+  try {
+    user = JSON.parse(localStorage.getItem('user'))
+  } catch (e) {}
+
   if (to.name !== 'login' && to.name !== 'register' && to.name !== 'forgot-password' && to.name !== 'reset-password' && !isAuthenticated) {
     next({ name: 'login' })
+  } else if (to.path.startsWith('/admin') && (!user || user.role !== 'admin')) {
+    next({ name: 'dashboard' }) // Redireciona usuários não-admin para o painel normal
   } else {
     next()
   }

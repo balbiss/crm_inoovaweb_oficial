@@ -1,21 +1,12 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Plus, Search, Filter, MoreVertical, MapPin, Home, DollarSign, X } from '@lucide/vue'
+import { useRouter } from 'vue-router'
+import { Search, Filter, Plus, MapPin, Grid, BedDouble, Car, Edit2, Trash2, Map } from '@lucide/vue'
 import api from '../api'
-import Swal from 'sweetalert2'
 
+const router = useRouter()
 const properties = ref([])
 const isLoading = ref(true)
-const showModal = ref(false)
-
-const newProperty = ref({
-  title: '',
-  description: '',
-  price: '',
-  bedrooms: 0,
-  bathrooms: 0,
-  status: 'Disponível'
-})
 
 const fetchProperties = async () => {
   isLoading.value = true
@@ -24,11 +15,6 @@ const fetchProperties = async () => {
     properties.value = response.data
   } catch (error) {
     console.error('Error fetching properties:', error)
-    // Fallback list to allow UI preview if offline
-    properties.value = [
-      { id: 1, title: 'Apartamento Duplex Vila Madalena', price: 'R$ 1.200.000', bedrooms: 3, bathrooms: 2, status: 'Disponível' },
-      { id: 2, title: 'Casa Condomínio Fechado', price: 'R$ 2.500.000', bedrooms: 4, bathrooms: 4, status: 'Em Negociação' },
-    ]
   } finally {
     isLoading.value = false
   }
@@ -38,479 +24,295 @@ onMounted(() => {
   fetchProperties()
 })
 
-const handleCreateProperty = async () => {
-  if (!newProperty.value.title || !newProperty.value.price) {
-    Swal.fire({
+const selectedProperties = ref([])
+
+const getCoverImage = (property) => {
+  if (property.photo_urls && property.photo_urls.length > 0) {
+    return `http://localhost:3000${property.photo_urls[0]}`
+  }
+  return 'https://via.placeholder.com/150x150?text=Sem+Foto'
+}
+
+const openMap = (property) => {
+  const address = `${property.street || ''}, ${property.number || ''} ${property.neighborhood || ''} ${property.city || ''} ${property.state || ''}`
+  window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`, '_blank')
+}
+
+const deleteProperty = async (id) => {
+  import('sweetalert2').then(async ({ default: Swal }) => {
+    const result = await Swal.fire({
+      title: 'Tem certeza?',
+      text: "Você não poderá reverter isso!",
       icon: 'warning',
-      title: 'Atenção',
-      text: 'Título e Preço são obrigatórios!',
-      confirmButtonColor: '#1f93ff'
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sim, excluir!'
     })
-    return
-  }
 
-  try {
-    const user = JSON.parse(localStorage.getItem('user'))
-    const account_id = user ? user.account_id : null
-
-    await api.post('/properties', {
-      property: {
-        title: newProperty.value.title,
-        description: newProperty.value.description,
-        price: newProperty.value.price,
-        bedrooms: parseInt(newProperty.value.bedrooms) || 0,
-        bathrooms: parseInt(newProperty.value.bathrooms) || 0,
-        status: newProperty.value.status,
-        account_id: account_id
+    if (result.isConfirmed) {
+      try {
+        await api.delete(`/properties/${id}`)
+        properties.value = properties.value.filter(p => p.id !== id)
+        Swal.fire('Excluído!', 'O imóvel foi excluído.', 'success')
+      } catch (error) {
+        Swal.fire('Erro', 'Não foi possível excluir.', 'error')
       }
-    })
-
-    Swal.fire({
-      icon: 'success',
-      title: 'Imóvel Cadastrado',
-      text: 'O imóvel foi adicionado com sucesso!',
-      timer: 1500,
-      showConfirmButton: false
-    })
-
-    showModal.value = false
-    newProperty.value = {
-      title: '',
-      description: '',
-      price: '',
-      bedrooms: 0,
-      bathrooms: 0,
-      status: 'Disponível'
     }
-    fetchProperties()
-  } catch (error) {
-    console.error('Error creating property:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Erro',
-      text: 'Não foi possível cadastrar o imóvel.'
+  })
+}
+
+const bulkDelete = async () => {
+  if (selectedProperties.value.length === 0) return
+  
+  import('sweetalert2').then(async ({ default: Swal }) => {
+    const result = await Swal.fire({
+      title: 'Excluir em massa?',
+      text: `Você vai excluir ${selectedProperties.value.length} imóveis.`,
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Sim, excluir!'
     })
-  }
+
+    if (result.isConfirmed) {
+      try {
+        for (const id of selectedProperties.value) {
+          await api.delete(`/properties/${id}`)
+        }
+        properties.value = properties.value.filter(p => !selectedProperties.value.includes(p.id))
+        selectedProperties.value = []
+        Swal.fire('Excluídos!', 'Imóveis excluídos com sucesso.', 'success')
+      } catch (error) {
+        Swal.fire('Erro', 'Ocorreu um erro ao excluir.', 'error')
+      }
+    }
+  })
 }
 </script>
 
 <template>
   <div class="page-container">
-    <div class="page-header">
-      <div class="header-left">
-        <h1>Imóveis</h1>
-        <span class="badge">{{ properties.length }} totais</span>
+    <div class="filter-card">
+      <div class="search-row">
+        <input type="text" class="main-search" placeholder="Filtro geral">
       </div>
-      <div class="header-actions">
-        <div class="search-box">
-          <Search class="icon-sm search-icon" />
-          <input type="text" placeholder="Buscar imóvel..." />
+      <div class="actions-row">
+        <div class="left-actions">
+          <button class="btn-filter"><Filter class="icon-sm" /> Filtrar</button>
+          <span class="total-text">Total de Imóveis: {{ properties.length }}</span>
+          <button v-if="selectedProperties.length > 0" class="btn-danger" @click="bulkDelete">Excluir Selecionados ({{ selectedProperties.length }})</button>
         </div>
-        <button class="btn-secondary"><Filter class="icon-sm" /> Filtros</button>
-        <button class="btn-primary" @click="showModal = true"><Plus class="icon-sm" /> Novo Imóvel</button>
+        <div class="right-actions">
+          <button class="btn-outline">Limpar</button>
+          <button class="btn-primary">Buscar</button>
+        </div>
+      </div>
+      <div class="active-filters">
+        <span class="filter-tag">Status: Ativo <button>×</button></span>
+        <span class="filter-tag">Negociação <button>×</button></span>
       </div>
     </div>
 
-    <div class="table-container" v-if="!isLoading">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Título</th>
-            <th>Preço</th>
-            <th>Características</th>
-            <th>Status</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="property in properties" :key="property.id">
-            <td>
-              <div class="property-title">
-                <div class="avatar"><Home class="icon-sm" /></div>
-                <span>{{ property.title }}</span>
-              </div>
-            </td>
-            <td>
-              <div class="info-cell"><DollarSign class="icon-xs" /> {{ property.price }}</div>
-            </td>
-            <td>
-              <div class="info-cell">
-                <span>{{ property.bedrooms }} Quartos</span>
-                <span class="dot">•</span>
-                <span>{{ property.bathrooms }} Banheiros</span>
-              </div>
-            </td>
-            <td>
-              <span class="status-badge" :class="{'bg-green': property.status === 'Disponível', 'bg-yellow': property.status === 'Em Negociação'}">
-                {{ property.status }}
-              </span>
-            </td>
-            <td>
-              <button class="icon-btn"><MoreVertical class="icon-sm" /></button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <div class="new-btn-container">
+      <button class="btn-primary new-property-btn" @click="router.push('/imoveis/novo')">
+        <Plus class="icon-sm" /> Novo Imóvel
+      </button>
     </div>
 
+    <div class="properties-list" v-if="!isLoading">
+      <div class="property-card" v-for="property in properties" :key="property.id">
+        <div class="checkbox-col">
+          <input type="checkbox" :value="property.id" v-model="selectedProperties">
+        </div>
+        
+        <div class="image-col">
+          <div class="image-wrapper">
+            <span class="status-badge"><span class="dot green"></span> {{ property.code || 'S/N' }}</span>
+            <img :src="getCoverImage(property)" alt="Imóvel" class="property-img">
+          </div>
+        </div>
+
+        <div class="details-col">
+          <h3 class="property-title">
+            {{ property.property_type || 'Imóvel' }} 
+            <span class="title-separator" v-if="property.neighborhood">|</span> 
+            <span class="neighborhood-name">{{ property.neighborhood }}</span>
+          </h3>
+          
+          <div class="property-address">
+            <MapPin class="icon-xs" />
+            <p>{{ property.street || 'Endereço não informado' }}, {{ property.number }} - {{ property.neighborhood }} - {{ property.city }}/{{ property.state }}, {{ property.cep }}</p>
+          </div>
+
+          <div class="property-features">
+            <div class="feature"><Grid class="icon-sm" /> <div><strong>Área Construída</strong><br>{{ property.built_area || 0 }} m²</div></div>
+            <div class="feature"><Grid class="icon-sm" /> <div><strong>Área Terreno</strong><br>{{ property.total_area || 0 }} m²</div></div>
+            <div class="feature"><BedDouble class="icon-sm" /> <div><strong>Quartos</strong><br>{{ property.bedrooms || 0 }} ({{ property.suites || 0 }} suíte)</div></div>
+            <div class="feature"><Car class="icon-sm" /> <div><strong>Vagas</strong><br>{{ property.parking_spots || 0 }}</div></div>
+          </div>
+        </div>
+
+        <div class="pricing-col">
+          <div class="pricing-top">
+            <span class="last-updated">Última alteração: {{ new Date(property.updated_at).toLocaleDateString() }}</span>
+            <button class="edit-btn" @click="router.push(`/imoveis/${property.id}/editar`)"><Edit2 class="icon-sm" /></button>
+          </div>
+          
+          <div class="pricing-middle">
+            <span class="listing-type">{{ property.listing_type || 'Venda' }}</span>
+            <h2 class="price">R$ {{ Number(property.price).toLocaleString('pt-BR', {minimumFractionDigits: 2}) }}</h2>
+          </div>
+          
+          <div class="pricing-bottom">
+            <span class="agent-name">Captador: {{ property.agent_name || 'Nenhum' }}</span>
+            <div class="action-buttons">
+              <button class="circle-btn bg-danger" @click="deleteProperty(property.id)" title="Excluir"><Trash2 class="icon-sm" /></button>
+              <button class="circle-btn" @click="openMap(property)" title="Ver no Mapa"><Map class="icon-sm" /></button>
+            </div>
+          </div>
+        </div>
+        
+        <div class="card-indicator"></div>
+      </div>
+    </div>
+    
     <div v-else class="loading-state">
       Carregando imóveis...
-    </div>
-
-    <!-- Modal de Criação de Imóvel -->
-    <div v-if="showModal" class="modal-backdrop" @click.self="showModal = false">
-      <div class="modal-card">
-        <div class="modal-header">
-          <h3>Cadastrar Novo Imóvel</h3>
-          <button class="close-btn" @click="showModal = false"><X class="icon-sm" /></button>
-        </div>
-        <form @submit.prevent="handleCreateProperty" class="modal-form">
-          <div class="form-group">
-            <label for="title">Título do Imóvel</label>
-            <input type="text" id="title" v-model="newProperty.title" placeholder="Ex: Apartamento na Vila Madalena" required />
-          </div>
-          <div class="form-group">
-            <label for="description">Descrição</label>
-            <textarea id="description" v-model="newProperty.description" placeholder="Ex: Excelente localização, próximo ao metrô..."></textarea>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="price">Preço</label>
-              <input type="text" id="price" v-model="newProperty.price" placeholder="Ex: R$ 850.000" required />
-            </div>
-            <div class="form-group">
-              <label for="status">Status</label>
-              <select id="status" v-model="newProperty.status">
-                <option value="Disponível">Disponível</option>
-                <option value="Em Negociação">Em Negociação</option>
-                <option value="Vendido">Vendido</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label for="bedrooms">Dormitórios</label>
-              <input type="number" id="bedrooms" v-model="newProperty.bedrooms" min="0" />
-            </div>
-            <div class="form-group">
-              <label for="bathrooms">Banheiros</label>
-              <input type="number" id="bathrooms" v-model="newProperty.bathrooms" min="0" />
-            </div>
-          </div>
-          <div class="modal-actions">
-            <button type="button" class="btn-cancel" @click="showModal = false">Cancelar</button>
-            <button type="submit" class="btn-submit">Salvar Imóvel</button>
-          </div>
-        </form>
-      </div>
     </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .page-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  padding: 1.5rem 2rem;
+  padding: 2rem;
   background: var(--bg-primary);
+  height: 100%;
   overflow-y: auto;
 }
 
-.page-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1.5rem;
+.filter-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
 
-  .header-left {
+  .search-row {
+    margin-bottom: 1rem;
+    .main-search {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-main);
+      font-size: 0.95rem;
+      outline: none;
+      &:focus { border-color: var(--primary); }
+    }
+  }
+
+  .actions-row {
     display: flex;
+    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    
-    h1 {
-      font-size: 1.5rem;
+    margin-bottom: 1rem;
+
+    .left-actions, .right-actions {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .btn-filter {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
       font-weight: 600;
       color: var(--text-main);
+      cursor: pointer;
     }
-    
-    .badge {
-      background: var(--bg-tertiary);
-      color: var(--text-muted);
-      padding: 0.2rem 0.6rem;
-      border-radius: 12px;
-      font-size: 0.8rem;
+
+    .total-text {
+      color: #4338ca;
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      border: none;
+      color: white;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 0.85rem;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      padding: 0.5rem 1.5rem;
+      border-radius: 20px;
+      color: var(--text-main);
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .btn-primary {
+      background: var(--primary);
+      border: none;
+      color: white;
+      padding: 0.5rem 1.5rem;
+      border-radius: 20px;
+      cursor: pointer;
       font-weight: 500;
     }
   }
 
-  .header-actions {
+  .active-filters {
     display: flex;
-    gap: 0.75rem;
-    align-items: center;
-  }
-}
-
-.search-box {
-  position: relative;
-  
-  .search-icon {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: var(--text-muted);
-  }
-  
-  input {
-    padding: 0.5rem 1rem 0.5rem 2.2rem;
-    border: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-    color: var(--text-main);
-    border-radius: 6px;
-    outline: none;
-    font-size: 0.85rem;
+    gap: 0.5rem;
     
-    &:focus { border-color: var(--primary); }
-  }
-}
-
-.btn-primary {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: var(--primary);
-  color: white;
-  padding: 0.5rem 1rem;
-  border-radius: 6px;
-  border: none;
-  font-weight: 500;
-  cursor: pointer;
-  
-  &:hover { background: var(--primary-hover); }
-}
-
-.btn-secondary {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  background: var(--bg-secondary);
-  color: var(--text-main);
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-weight: 500;
-  cursor: pointer;
-  
-  &:hover { background: var(--bg-hover); }
-}
-
-.table-container {
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-  overflow: hidden;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  
-  th {
-    background: var(--bg-tertiary);
-    padding: 0.75rem 1.5rem;
-    text-align: left;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: var(--text-muted);
-    text-transform: uppercase;
-    border-bottom: 1px solid var(--border-color);
-  }
-  
-  td {
-    padding: 1rem 1.5rem;
-    border-bottom: 1px solid var(--border-color);
-    color: var(--text-main);
-    font-size: 0.9rem;
-  }
-  
-  tr:last-child td { border-bottom: none; }
-  tr:hover { background: var(--bg-hover); }
-}
-
-.property-title {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  font-weight: 500;
-  
-  .avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: var(--bg-tertiary);
-    color: var(--text-muted);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-}
-
-.info-cell {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  color: var(--text-muted);
-
-  .dot {
-    color: var(--border-color);
-  }
-}
-
-.status-badge {
-  background: var(--bg-tertiary);
-  color: var(--text-muted);
-  padding: 0.2rem 0.6rem;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-
-  &.bg-green {
-    background: #dcfce7;
-    color: #166534;
-  }
-  
-  &.bg-yellow {
-    background: #fef3c7;
-    color: #92400e;
-  }
-}
-
-.icon-sm { width: 16px; height: 16px; }
-.icon-xs { width: 14px; height: 14px; color: var(--text-muted); }
-.icon-btn {
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: var(--text-muted);
-  
-  &:hover { color: var(--text-main); }
-}
-
-.loading-state {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-muted);
-}
-
-/* Modal Styling */
-.modal-backdrop {
-  position: fixed;
-  top: 0; left: 0;
-  width: 100vw; height: 100vh;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.modal-card {
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 12px;
-  width: 100%;
-  max-width: 500px;
-  box-shadow: 0 20px 25px -5px var(--shadow-color), 0 10px 10px -5px var(--shadow-sm);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1.25rem 1.5rem;
-  border-bottom: 1px solid var(--border-color);
-  background: var(--bg-tertiary);
-
-  h3 {
-    font-size: 1.1rem;
-    font-weight: 600;
-    color: var(--text-main);
-  }
-
-  .close-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-muted);
-    cursor: pointer;
-    &:hover { color: var(--text-main); }
-  }
-}
-
-.modal-form {
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-
-  label {
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--text-main);
-  }
-
-  input, textarea, select {
-    padding: 0.65rem 0.75rem;
-    border: 1px solid var(--border-color);
-    background: var(--bg-primary);
-    color: var(--text-main);
-    border-radius: 6px;
-    font-size: 0.9rem;
-    outline: none;
-    &:focus {
-      border-color: var(--primary);
+    .filter-tag {
+      background: var(--bg-primary);
+      border: 1px solid var(--border-color);
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      color: #4338ca;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      
+      button {
+        background: transparent;
+        border: none;
+        color: #4338ca;
+        cursor: pointer;
+        font-weight: bold;
+      }
     }
   }
-
-  textarea {
-    min-height: 80px;
-    resize: vertical;
-  }
 }
 
-.form-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-}
-
-.modal-actions {
+.new-btn-container {
   display: flex;
   justify-content: flex-end;
-  gap: 0.75rem;
-  margin-top: 1rem;
-
-  .btn-cancel {
-    background: var(--bg-tertiary);
-    color: var(--text-main);
-    border: 1px solid var(--border-color);
-    padding: 0.5rem 1rem;
-    border-radius: 6px;
-    font-weight: 500;
-    cursor: pointer;
-    &:hover { background: var(--bg-hover); }
-  }
-
-  .btn-submit {
+  margin-bottom: 1.5rem;
+  
+  .new-property-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
     background: var(--primary);
     color: white;
     border: none;
@@ -518,8 +320,172 @@ const handleCreateProperty = async () => {
     border-radius: 6px;
     font-weight: 500;
     cursor: pointer;
-    &:hover { background: var(--primary-hover); }
   }
 }
-</style>
 
+.properties-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.property-card {
+  display: flex;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  position: relative;
+  gap: 1.5rem;
+
+  .checkbox-col {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    input { width: 18px; height: 18px; }
+  }
+
+  .image-col {
+    .image-wrapper {
+      position: relative;
+      width: 160px;
+      height: 120px;
+      border-radius: 8px;
+      overflow: hidden;
+      
+      .status-badge {
+        position: absolute;
+        top: 8px;
+        left: 8px;
+        background: rgba(0,0,0,0.7);
+        color: white;
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.75rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+        
+        .dot.green {
+          width: 8px; height: 8px;
+          background: #22c55e;
+          border-radius: 50%;
+        }
+      }
+      
+      .property-img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+    }
+  }
+
+  .details-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    .property-title {
+      font-size: 1.1rem;
+      color: var(--text-main);
+      font-weight: 500;
+      margin: 0;
+      
+      .title-separator { color: var(--text-muted); margin: 0 0.5rem; }
+      .neighborhood-name { color: var(--text-muted); }
+    }
+
+    .property-address {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      margin-top: 0.5rem;
+      p { margin: 0; }
+    }
+
+    .property-features {
+      display: flex;
+      gap: 2rem;
+      margin-top: 1rem;
+      
+      .feature {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 0.8rem;
+        color: var(--text-main);
+        
+        strong { color: var(--text-muted); font-weight: 500; }
+      }
+    }
+  }
+
+  .pricing-col {
+    width: 280px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-align: right;
+
+    .pricing-top {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 1rem;
+      
+      .last-updated { font-size: 0.75rem; color: var(--text-muted); }
+      .edit-btn { background: none; border: none; color: var(--text-muted); cursor: pointer; }
+    }
+
+    .pricing-middle {
+      .listing-type { font-size: 0.85rem; color: var(--text-muted); }
+      .price { font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0; }
+    }
+
+    .pricing-bottom {
+      display: flex;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 1rem;
+      
+      .agent-name { font-size: 0.8rem; color: var(--text-muted); }
+      
+      .action-buttons {
+        display: flex;
+        gap: 0.5rem;
+        
+        .circle-btn {
+          width: 32px; height: 32px;
+          border-radius: 50%;
+          background: #4338ca;
+          color: white;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          
+          &.bg-danger { background: #ef4444; }
+        }
+      }
+    }
+  }
+
+  .card-indicator {
+    position: absolute;
+    right: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 4px;
+    background: #4338ca;
+    border-radius: 4px 0 0 4px;
+  }
+}
+
+.icon-sm { width: 16px; height: 16px; }
+.icon-xs { width: 14px; height: 14px; }
+</style>

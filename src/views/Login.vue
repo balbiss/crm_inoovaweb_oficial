@@ -40,7 +40,11 @@ const handleLogin = async () => {
       showConfirmButton: false
     })
     
-    router.push('/dashboard') // Or wherever the kanban is
+    if (response.data && response.data.user && response.data.user.role === 'admin') {
+      router.push('/admin')
+    } else {
+      router.push('/dashboard')
+    }
   } catch (error) {
     console.error("Login error", error)
     Swal.fire({
