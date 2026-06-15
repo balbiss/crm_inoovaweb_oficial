@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useInboxesStore } from '../store/inboxes'
 import { 
@@ -59,6 +59,10 @@ const loadUser = () => {
     console.error('Erro ao carregar dados do usuário', e)
   }
 }
+
+const isAdminOrEmpresa = computed(() => {
+  return ['admin', 'empresa'].includes(currentUser.value.role)
+})
 
 const userInitials = () => {
   const fn = currentUser.value.first_name || ''
@@ -257,7 +261,7 @@ const handleLogout = () => {
           </a>
         </div>
 
-        <div class="nav-section settings-section">
+        <div class="nav-section settings-section" v-if="isAdminOrEmpresa">
           <div class="settings-header" @click="toggleSettings">
             <div class="left">
               <Settings class="icon-sm" />
@@ -266,7 +270,7 @@ const handleLogout = () => {
             <ChevronDown class="icon-xs chevron-icon" :class="{ 'rotate': isSettingsOpen }" />
           </div>
           <div class="settings-menu" v-show="isSettingsOpen">
-            <a href="#" class="nav-item sub-item active"><Briefcase class="icon-sm" /> Conta</a>
+            <router-link to="/settings/account" class="nav-item sub-item" active-class="active"><Briefcase class="icon-sm" /> Conta</router-link>
             <a href="#" class="nav-item sub-item"><User class="icon-sm" /> Agentes</a>
             <a href="#" class="nav-item sub-item"><Users class="icon-sm" /> Times</a>
             <router-link to="/settings/inboxes" class="nav-item sub-item"><Inbox class="icon-sm" /> Caixas de Entrada</router-link>
@@ -784,7 +788,8 @@ const handleLogout = () => {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   min-width: 0;
   height: 100%;
 }
@@ -795,7 +800,8 @@ const handleLogout = () => {
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .palette-overlay {

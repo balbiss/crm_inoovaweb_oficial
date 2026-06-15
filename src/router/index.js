@@ -3,6 +3,9 @@ import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import DashboardLayout from '../views/DashboardLayout.vue'
 import Dashboard from '../views/Dashboard.vue'
+import Properties from '../views/Properties.vue'
+import SettingsInboxes from '../views/SettingsInboxes.vue'
+import SettingsAccount from '../views/settings/Account.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -25,6 +28,11 @@ const router = createRouter({
       path: '/forgot-password',
       name: 'forgot-password',
       component: () => import('../views/ForgotPassword.vue')
+    },
+    {
+      path: '/users/password/edit',
+      name: 'reset-password',
+      component: () => import('../views/ResetPassword.vue')
     },
     {
       path: '/',
@@ -63,7 +71,7 @@ const router = createRouter({
         {
           path: 'imoveis',
           name: 'imoveis',
-          component: () => import('../views/Properties.vue')
+          component: Properties
         },
         {
           path: 'funil',
@@ -72,8 +80,13 @@ const router = createRouter({
         },
         {
           path: 'settings/inboxes',
-          name: 'settings_inboxes',
-          component: () => import('../views/SettingsInboxes.vue')
+          name: 'SettingsInboxes',
+          component: SettingsInboxes
+        },
+        {
+          path: 'settings/account',
+          name: 'SettingsAccount',
+          component: SettingsAccount
         },
         {
           path: 'settings/inboxes/new',
@@ -87,7 +100,7 @@ const router = createRouter({
 
 router.beforeEach((to, from, next) => {
   const isAuthenticated = !!localStorage.getItem('auth_token')
-  if (to.name !== 'login' && to.name !== 'register' && to.name !== 'forgot-password' && !isAuthenticated) {
+  if (to.name !== 'login' && to.name !== 'register' && to.name !== 'forgot-password' && to.name !== 'reset-password' && !isAuthenticated) {
     next({ name: 'login' })
   } else {
     next()
