@@ -43,7 +43,7 @@ const funnelItems = computed(() => {
   const k = kpis.value?.kanban || {}
   return [
     { label: 'Novos Leads',      value: k.lead     || 0, color: '#6366f1', icon: Users },
-    { label: 'Em Atendimento',   value: k.visit    || 0, color: '#f59e0b', icon: Eye },
+    { label: 'Visita Agendada',  value: k.visit    || 0, color: '#f59e0b', icon: Calendar },
     { label: 'Proposta Feita',   value: k.proposal || 0, color: '#3b82f6', icon: Handshake },
     { label: 'Negócio Fechado',  value: k.won      || 0, color: '#10b981', icon: CheckCircle }
   ]
