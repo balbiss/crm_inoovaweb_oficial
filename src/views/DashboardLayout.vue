@@ -263,12 +263,54 @@ onMounted(() => {
 
   fetchTags()
   window.addEventListener('tags-updated', fetchTags)
+  window.addEventListener('lead-atribuido', handleLeadAtribuido)
 })
+
+const handleLeadAtribuido = (e) => {
+  const { contact_name, conversation_id, assigned_by } = e.detail
+  const origem = assigned_by === 'rodizio' ? 'via rodízio automático' : 'pelo gestor'
+
+  // Toast de alerta visual
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'info',
+    title: '📋 Novo lead atribuído a você!',
+    html: `<strong>${contact_name}</strong><br><small style="color:#6b7280">${origem}</small>`,
+    showConfirmButton: true,
+    confirmButtonText: 'Ver conversa',
+    confirmButtonColor: '#4338ca',
+    showCloseButton: true,
+    timer: 12000,
+    timerProgressBar: true,
+    didOpen: () => {
+      // Som de notificação
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+        osc.frequency.setValueAtTime(880, ctx.currentTime)
+        osc.frequency.setValueAtTime(660, ctx.currentTime + 0.1)
+        gain.gain.setValueAtTime(0.3, ctx.currentTime)
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
+        osc.start(ctx.currentTime)
+        osc.stop(ctx.currentTime + 0.4)
+      } catch {}
+    }
+  }).then((result) => {
+    if (result.isConfirmed && conversation_id) {
+      router.push(`/conversas`)
+    }
+  })
+}
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handlePaletteKeydown)
   if (notificationInterval) clearInterval(notificationInterval)
   window.removeEventListener('tags-updated', fetchTags)
+  window.removeEventListener('lead-atribuido', handleLeadAtribuido)
 })
 
 const handleLogout = () => {

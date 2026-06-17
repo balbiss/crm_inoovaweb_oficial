@@ -350,6 +350,11 @@ export const useConversationsStore = defineStore('conversations', {
           } else if (payload.event === 'conversation_updated') {
             const idx = this.conversations.findIndex(c => Number(c.id) === Number(payload.conversation?.id))
             if (idx !== -1) Object.assign(this.conversations[idx], payload.conversation)
+          } else if (payload.event === 'lead_atribuido') {
+            const me = this.currentUser
+            if (Number(payload.assigned_to_user_id) === Number(me?.id)) {
+              window.dispatchEvent(new CustomEvent('lead-atribuido', { detail: payload }))
+            }
           }
         } catch (error) {
           console.error('WS message error:', error)
