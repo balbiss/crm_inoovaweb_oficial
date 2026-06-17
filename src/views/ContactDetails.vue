@@ -339,14 +339,14 @@ const saveNote = async () => {
         </div>
         <div class="tab-content">
           <!-- Tab Atributos -->
-          <div v-if="activeTab === 'Atributos'">
+          <div v-show="activeTab === 'Atributos'">
             <p class="empty-state-text">
               Não há atributos personalizados de contatos disponíveis nesta conta. Você pode criar um atributo personalizado nas configurações.
             </p>
           </div>
           
           <!-- Tab Histórico -->
-          <div v-if="activeTab === 'Histórico'" class="history-tab">
+          <div v-show="activeTab === 'Histórico'" class="history-tab">
             <div class="history-item">
               <span class="history-date">Data de Criação</span>
               <p>Contato adicionado ao CRM.</p>
@@ -368,7 +368,7 @@ const saveNote = async () => {
           </div>
           
           <!-- Tab Notas -->
-          <div v-if="activeTab === 'Notas'">
+          <div v-show="activeTab === 'Notas'">
             <div class="notes-input-area">
               <textarea v-model="newNote" placeholder="Adicione uma nota sobre este contato..." rows="3"></textarea>
               <button class="btn-primary" @click="saveNote" :disabled="!newNote.trim()">Salvar Nota</button>
@@ -387,7 +387,7 @@ const saveNote = async () => {
           </div>
           
           <!-- Tab Mesclar -->
-          <div v-if="activeTab === 'Mesclar'">
+          <div v-show="activeTab === 'Mesclar'">
             <p class="empty-state-text">
               Pesquise outro contato para mesclar com este.
             </p>
@@ -402,7 +402,7 @@ const saveNote = async () => {
   </div>
 
   <!-- Note Modal -->
-  <div class="modal-overlay" v-if="showNoteModal" @click="closeNoteModal">
+  <div class="modal-overlay" v-show="showNoteModal" @click="closeNoteModal">
     <div class="modal-content" @click.stop>
       <div class="modal-header">
         <h3>Detalhes da Nota</h3>

@@ -1,8 +1,9 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Plus, MoreHorizontal, User, Phone, X, AlertCircle } from '@lucide/vue'
 import api from '../api'
 import Swal from 'sweetalert2'
+import { useConversationsStore } from '../store/conversations'
 
 const columns = ref([
   { id: 'lead', name: 'Novos Leads', color: '#3b82f6', cards: [] },
@@ -14,6 +15,7 @@ const columns = ref([
 const isLoading = ref(true)
 const showModal = ref(false)
 const targetColumnId = ref('lead')
+const store = useConversationsStore()
 
 const newContact = ref({
   first_name: '',
@@ -25,8 +27,8 @@ const newContact = ref({
   source: 'WhatsApp API'
 })
 
-const fetchContacts = async () => {
-  isLoading.value = true
+const fetchContacts = async (showLoading = true) => {
+  if (showLoading) isLoading.value = true
   try {
     const response = await api.get('/contacts')
     const contacts = response.data
@@ -44,7 +46,7 @@ const fetchContacts = async () => {
       targetCol.cards.push({
         id: contact.id,
         title: `${contact.first_name || contact.name || ''} ${contact.last_name || ''}`.trim(),
-        subtitle: contact.intention ? `Intenção: ${contact.intention}` : 'Sem pretensão definida',
+        subtitle: contact.intention ? (contact.intention.startsWith('Visita:') ? contact.intention : `Intenção: ${contact.intention}`) : 'Sem pretensão definida',
         phone: contact.phone || 'Sem telefone',
         temperature: contact.temperature || 'Morno',
         raw: contact
@@ -52,16 +54,40 @@ const fetchContacts = async () => {
     })
   } catch (error) {
     console.error('Error fetching contacts for Kanban:', error)
-    // Fallback list to allow UI preview if offline
-    columns.value[0].cards = [{ id: 1, title: 'Carlos Ferreira', subtitle: 'Intenção: Venda', phone: '11999999999', temperature: 'Quente', raw: { status: 'lead' } }]
-    columns.value[1].cards = [{ id: 2, title: 'Ana Silva', subtitle: 'Intenção: Locação', phone: '11888888888', temperature: 'Morno', raw: { status: 'visit' } }]
   } finally {
-    isLoading.value = false
+    if (showLoading) isLoading.value = false
   }
 }
 
+const colors = [
+  { bg: '#dbeafe', color: '#1e40af' }, // Blue
+  { bg: '#d1fae5', color: '#065f46' }, // Green
+  { bg: '#fee2e2', color: '#991b1b' }, // Red
+  { bg: '#fef3c7', color: '#92400e' }, // Yellow
+  { bg: '#f3e8ff', color: '#6b21a8' }  // Purple
+]
+
+const getAvatarStyle = (name) => {
+  if (!name) return { backgroundColor: '#e5e7eb', color: '#4b5563' }
+  const index = name.charCodeAt(0) % colors.length
+  return {
+    backgroundColor: colors[index].bg,
+    color: colors[index].color
+  }
+}
+
+const handleContactUpdated = () => {
+  fetchContacts(false) // Atualiza em background sem mostrar tela de carregamento
+}
+
 onMounted(() => {
+  store.setupWebSocket() // Garante que o websocket está conectado
   fetchContacts()
+  window.addEventListener('contact-updated', handleContactUpdated)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('contact-updated', handleContactUpdated)
 })
 
 // Drag and Drop Logic
@@ -193,13 +219,13 @@ const handleCreateContact = async () => {
         v-for="col in columns" 
         :key="col.id"
         :class="{ 'column-drag-over': activeColumnDrag === col.id }"
+        :style="{ borderTop: `3px solid ${col.color}` }"
         @dragover.prevent="activeColumnDrag = col.id"
         @dragleave="activeColumnDrag = null"
         @drop="dropCard($event, col.id)"
       >
         <div class="column-header">
           <div class="header-left">
-            <span class="color-dot" :style="{ backgroundColor: col.color }"></span>
             <h3>{{ col.name }}</h3>
             <span class="count">{{ col.cards.length }}</span>
           </div>
@@ -227,7 +253,7 @@ const handleCreateContact = async () => {
             </div>
 
             <div class="card-footer">
-              <div class="avatar-sm">{{ card.title.substring(0,2).toUpperCase() }}</div>
+              <div class="avatar-sm" :style="getAvatarStyle(card.title)">{{ card.title.substring(0,2).toUpperCase() }}</div>
             </div>
           </div>
         </div>
@@ -350,26 +376,31 @@ const handleCreateContact = async () => {
 
 .kanban-board {
   display: flex;
-  gap: 1rem;
+  gap: 0.75rem;
   overflow-x: auto;
   flex: 1;
   padding-bottom: 1rem;
+  
+  &::-webkit-scrollbar { height: 6px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 }
 
 .kanban-column {
-  width: 290px;
-  min-width: 290px;
+  width: 270px;
+  min-width: 270px;
   display: flex;
   flex-direction: column;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
+  background: #f4f5f7;
+  border-radius: 6px;
   max-height: 100%;
-  transition: background-color 0.2s, border-color 0.2s;
+  transition: background-color 0.2s, box-shadow 0.2s;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 
   &.column-drag-over {
-    background-color: var(--bg-hover);
-    border-color: var(--primary);
+    background-color: #ebecf0;
+    box-shadow: 0 0 0 2px var(--primary) inset;
   }
 }
 
@@ -377,33 +408,26 @@ const handleCreateContact = async () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1rem;
-  border-bottom: 1px solid var(--border-color);
+  padding: 0.75rem 0.75rem 0.5rem;
 
   .header-left {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-
-    .color-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-    }
+    gap: 0.4rem;
 
     h3 {
-      font-size: 0.95rem;
-      font-weight: 600;
-      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #172b4d;
     }
 
     .count {
-      background: var(--bg-tertiary);
-      color: var(--text-muted);
-      padding: 0.1rem 0.5rem;
+      background: #e1e4e8;
+      color: #5e6c84;
+      padding: 0.1rem 0.4rem;
       border-radius: 10px;
-      font-size: 0.75rem;
-      font-weight: 600;
+      font-size: 0.7rem;
+      font-weight: 700;
     }
   }
 }
@@ -411,24 +435,29 @@ const handleCreateContact = async () => {
 .column-content {
   flex: 1;
   overflow-y: auto;
-  padding: 1rem;
+  padding: 0.5rem 0.75rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.5rem;
+  
+  &::-webkit-scrollbar { width: 4px; }
+  &::-webkit-scrollbar-track { background: transparent; }
+  &::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 10px; }
+  &::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
 }
 
 .kanban-card {
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  padding: 1rem;
-  box-shadow: 0 1px 3px var(--shadow-sm);
-  border: 1px solid var(--border-color);
+  background: #ffffff;
+  border-radius: 6px;
+  padding: 0.75rem;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0,0,0,0.05);
   cursor: grab;
-  transition: box-shadow 0.2s, border-color 0.2s, transform 0.1s;
+  transition: all 0.15s ease-in-out;
 
   &:hover {
-    box-shadow: 0 4px 6px -1px var(--shadow-color);
-    border-color: var(--primary);
+    box-shadow: 0 3px 6px rgba(0, 0, 0, 0.08);
+    transform: translateY(-1px);
   }
 
   &:active {
@@ -442,43 +471,48 @@ const handleCreateContact = async () => {
     align-items: flex-start;
     
     h4 {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text-main);
-      margin-bottom: 0.25rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: #111827;
+      margin-bottom: 0.2rem;
+      line-height: 1.2;
     }
   }
 
   .card-subtitle {
-    font-size: 0.8rem;
-    color: var(--text-muted);
-    margin-bottom: 0.75rem;
+    font-size: 0.75rem;
+    color: #4b5563;
+    margin-bottom: 0.5rem;
+    line-height: 1.3;
+    font-weight: 500;
   }
 
   .card-details {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.5rem;
 
     .phone-info {
-      font-size: 0.75rem;
-      color: var(--text-muted);
+      font-size: 0.7rem;
+      color: #6b7280;
       display: flex;
       align-items: center;
-      gap: 0.25rem;
+      gap: 0.2rem;
+      font-weight: 500;
     }
 
     .temp-badge {
-      font-size: 0.7rem;
-      font-weight: 600;
-      padding: 0.15rem 0.4rem;
-      border-radius: 4px;
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 0.1rem 0.3rem;
+      border-radius: 12px;
       text-transform: uppercase;
+      letter-spacing: 0.02em;
 
-      &.quente { background: #fee2e2; color: #ef4444; }
-      &.morno { background: #fef3c7; color: #d97706; }
-      &.frio { background: #e0f2fe; color: #0284c7; }
+      &.quente { background: #fee2e2; color: #b91c1c; }
+      &.morno { background: #fef3c7; color: #b45309; }
+      &.frio { background: #e0f2fe; color: #0369a1; }
     }
   }
 
@@ -486,20 +520,18 @@ const handleCreateContact = async () => {
     display: flex;
     justify-content: flex-end;
     align-items: center;
-    border-top: 1px dashed var(--border-color);
-    padding-top: 0.5rem;
+    border-top: 1px solid #f3f4f6;
+    padding-top: 0.4rem;
 
     .avatar-sm {
-      width: 24px;
-      height: 24px;
-      background: var(--bg-tertiary);
+      width: 20px;
+      height: 20px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.65rem;
-      font-weight: 600;
-      color: var(--text-muted);
+      font-size: 0.6rem;
+      font-weight: 700;
     }
   }
 }

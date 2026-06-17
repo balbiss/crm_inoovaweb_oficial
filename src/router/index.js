@@ -1,11 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Login from '../views/Login.vue'
-import Register from '../views/Register.vue'
 import DashboardLayout from '../views/DashboardLayout.vue'
-import Dashboard from '../views/Dashboard.vue'
-import Properties from '../views/Properties.vue'
-import SettingsInboxes from '../views/SettingsInboxes.vue'
-import SettingsAccount from '../views/settings/Account.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -17,12 +11,12 @@ const router = createRouter({
     {
       path: '/login',
       name: 'login',
-      component: Login
+      component: () => import('../views/Login.vue')
     },
     {
       path: '/register',
       name: 'register',
-      component: Register
+      component: () => import('../views/Register.vue')
     },
     {
       path: '/forgot-password',
@@ -41,7 +35,7 @@ const router = createRouter({
         {
           path: 'dashboard',
           name: 'dashboard',
-          component: Dashboard
+          component: () => import('../views/Dashboard.vue')
         },
         {
           path: 'conversas',
@@ -71,7 +65,7 @@ const router = createRouter({
         {
           path: 'imoveis',
           name: 'imoveis',
-          component: Properties
+          component: () => import('../views/Properties.vue')
         },
         {
           path: 'imoveis/novo',
@@ -104,6 +98,21 @@ const router = createRouter({
           component: () => import('../views/Appointments.vue')
         },
         {
+          path: 'agentes',
+          name: 'agentes',
+          component: () => import('../views/Agents.vue')
+        },
+        {
+          path: 'agentes/novo',
+          name: 'agentes_novo',
+          component: () => import('../views/AgentForm.vue')
+        },
+        {
+          path: 'agentes/:id/editar',
+          name: 'agentes_editar',
+          component: () => import('../views/AgentForm.vue')
+        },
+        {
           path: 'agendamentos/novo',
           name: 'agendamentos_novo',
           component: () => import('../views/AppointmentForm.vue')
@@ -121,12 +130,22 @@ const router = createRouter({
         {
           path: 'settings/inboxes',
           name: 'SettingsInboxes',
-          component: SettingsInboxes
+          component: () => import('../views/SettingsInboxes.vue')
+        },
+        {
+          path: 'settings/inboxes/:id',
+          name: 'settings_inbox_detail',
+          component: () => import('../views/SettingsInboxDetail.vue')
         },
         {
           path: 'settings/account',
           name: 'SettingsAccount',
-          component: SettingsAccount
+          component: () => import('../views/settings/Account.vue')
+        },
+        {
+          path: 'settings/tags',
+          name: 'SettingsTags',
+          component: () => import('../views/settings/Tags.vue')
         },
         {
           path: 'settings/inboxes/new',

@@ -1,28 +1,17 @@
 <script setup>
-import { ref, onMounted, computed, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { Plus, Search, Filter, Mail, Phone, ChevronDown, ChevronUp, ArrowDownUp, MoreVertical } from '@lucide/vue'
 import api from '../api' // Uses our configured axios instance with interceptor
 import Swal from 'sweetalert2'
+import { useContactsStore } from '../store/contacts'
+import { storeToRefs } from 'pinia'
 
-const contacts = ref([])
+const contactsStore = useContactsStore()
+const { contacts, isLoading } = storeToRefs(contactsStore)
 const expandedContactId = ref(null)
-const isLoading = ref(true)
 
-const fetchContacts = async () => {
-  isLoading.value = true
-  try {
-    const response = await api.get('/contacts')
-    contacts.value = response.data
-  } catch (error) {
-    console.error('Error fetching contacts:', error)
-    Swal.fire({
-      icon: 'error',
-      title: 'Erro',
-      text: 'Não foi possível carregar os contatos.'
-    })
-  } finally {
-    isLoading.value = false
-  }
+const fetchContacts = () => {
+  contactsStore.fetchContacts()
 }
 
 const closeDropdown = () => {
@@ -124,39 +113,52 @@ const selectCountry = (contact, country) => {
       </div>
     </div>
 
-    <div class="contacts-list" v-if="!isLoading">
-      <div 
-        class="contact-card" 
-        v-for="contact in contacts" 
-        :key="contact.id"
-      >
-        <div class="card-header" @click="$router.push(`/contatos/${contact.id}`)">
-          <div class="contact-info-summary">
-            <div class="avatar" :style="getAvatarStyle(contact.first_name || contact.name)">
-              {{ getInitials(contact.first_name || contact.name) }}
-            </div>
-            <div class="contact-text">
-              <h3 class="contact-name">{{ contact.first_name || contact.name }} {{ contact.last_name || '' }}</h3>
-              <div class="contact-subtext">
-                <span class="phone">{{ contact.phone || 'Sem telefone' }}</span>
-                <span class="separator">|</span>
-                <a href="#" class="details-link" @click.stop.prevent="$router.push(`/contatos/${contact.id}`)">Ver detalhes</a>
-              </div>
-            </div>
+    <div class="contacts-list">
+      <div v-if="isLoading" class="skeleton-list">
+        <div class="skeleton-card" v-for="i in 5" :key="i">
+          <div class="skeleton-avatar"></div>
+          <div class="skeleton-text">
+            <div class="skeleton-line title"></div>
+            <div class="skeleton-line subtitle"></div>
           </div>
-          <div class="card-actions">
-            <ChevronDown class="icon-sm" />
-          </div>
+          <div class="skeleton-action"></div>
         </div>
       </div>
-      
-      <div class="pagination">
-        <span class="showing-text">Exibindo 1 - {{ contacts.length }} de {{ contacts.length }} contatos</span>
-      </div>
-    </div>
-    
-    <div v-else class="loading-state">
-      Carregando contatos...
+
+      <template v-else>
+        <div 
+          class="contact-card" 
+          v-for="contact in contacts" 
+          :key="contact.id"
+        >
+          <div class="card-header" @click="$router.push(`/contatos/${contact.id}`)">
+            <div class="contact-info-summary">
+              <div class="avatar" :style="getAvatarStyle(contact.first_name || contact.name)">
+                {{ getInitials(contact.first_name || contact.name) }}
+              </div>
+              <div class="contact-text">
+                <h3 class="contact-name">{{ contact.first_name || contact.name }} {{ contact.last_name || '' }}</h3>
+                <div class="contact-subtext">
+                  <span class="phone">{{ contact.phone || 'Sem telefone' }}</span>
+                  <span class="separator">|</span>
+                  <a href="#" class="details-link" @click.stop.prevent="$router.push(`/contatos/${contact.id}`)">Ver detalhes</a>
+                </div>
+              </div>
+            </div>
+            <div class="card-actions">
+              <ChevronDown class="icon-sm" />
+            </div>
+          </div>
+        </div>
+        
+        <div class="pagination" v-if="contacts.length > 0">
+          <span class="showing-text">Exibindo 1 - {{ contacts.length }} de {{ contacts.length }} contatos</span>
+        </div>
+        
+        <div v-if="contacts.length === 0" class="empty-state">
+          Nenhum contato encontrado.
+        </div>
+      </template>
     </div>
   </div>
 </template>
@@ -317,11 +319,79 @@ const selectCountry = (contact, country) => {
     }
 
     .details-link {
-      color: #3b82f6;
+      color: #2563eb;
       text-decoration: none;
+      font-size: 0.8rem;
       font-weight: 500;
+      
+      &:hover { text-decoration: underline; }
     }
   }
+}
+
+/* Skeleton Loader */
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.skeleton-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  background: white;
+  border-bottom: 1px solid #f3f4f6;
+  animation: pulse-skeleton 1.5s infinite;
+  
+  .skeleton-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    margin-right: 1rem;
+  }
+  
+  .skeleton-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .skeleton-line {
+    height: 10px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    
+    &.title { width: 120px; height: 14px; }
+    &.subtitle { width: 200px; }
+  }
+  
+  .skeleton-action {
+    width: 20px;
+    height: 20px;
+    border-radius: 4px;
+    background: #e5e7eb;
+  }
+}
+
+@keyframes pulse-skeleton {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+.empty-state {
+  padding: 3rem;
+  text-align: center;
+  color: #6b7280;
+  font-size: 0.9rem;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  margin-top: 1rem;
 }
 
 .card-actions {

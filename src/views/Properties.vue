@@ -3,21 +3,15 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search, Filter, Plus, MapPin, Grid, BedDouble, Car, Edit2, Trash2, Map } from '@lucide/vue'
 import api from '../api'
+import { usePropertiesStore } from '../store/properties'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
-const properties = ref([])
-const isLoading = ref(true)
+const propertiesStore = usePropertiesStore()
+const { properties, isLoading } = storeToRefs(propertiesStore)
 
-const fetchProperties = async () => {
-  isLoading.value = true
-  try {
-    const response = await api.get('/properties')
-    properties.value = response.data
-  } catch (error) {
-    console.error('Error fetching properties:', error)
-  } finally {
-    isLoading.value = false
-  }
+const fetchProperties = () => {
+  propertiesStore.fetchProperties()
 }
 
 onMounted(() => {
@@ -28,7 +22,7 @@ const selectedProperties = ref([])
 
 const getCoverImage = (property) => {
   if (property.photo_urls && property.photo_urls.length > 0) {
-    return `http://localhost:3000${property.photo_urls[0]}`
+    return property.photo_urls[0]
   }
   return 'https://via.placeholder.com/150x150?text=Sem+Foto'
 }
@@ -121,8 +115,24 @@ const bulkDelete = async () => {
       </button>
     </div>
 
-    <div class="properties-list" v-if="!isLoading">
-      <div class="property-card" v-for="property in properties" :key="property.id">
+    <div class="properties-list">
+      <div v-if="isLoading" class="skeleton-list">
+        <div class="skeleton-property-card" v-for="i in 3" :key="'skel'+i">
+          <div class="skeleton-image"></div>
+          <div class="skeleton-content">
+            <div class="skeleton-line title"></div>
+            <div class="skeleton-line address"></div>
+            <div class="skeleton-features">
+              <div class="skeleton-feature"></div>
+              <div class="skeleton-feature"></div>
+              <div class="skeleton-feature"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template v-else>
+        <div class="property-card" v-for="property in properties" :key="property.id">
         <div class="checkbox-col">
           <input type="checkbox" :value="property.id" v-model="selectedProperties">
         </div>
@@ -176,10 +186,7 @@ const bulkDelete = async () => {
         
         <div class="card-indicator"></div>
       </div>
-    </div>
-    
-    <div v-else class="loading-state">
-      Carregando imóveis...
+      </template>
     </div>
   </div>
 </template>

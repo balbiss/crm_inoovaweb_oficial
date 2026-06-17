@@ -4,25 +4,61 @@ import api from '../api'
 export const useInboxesStore = defineStore('inboxes', {
   state: () => ({
     inboxes: [],
-    loading: false,
-    error: null
+    isLoading: false,
+    isLoadedOnce: false
   }),
-
+  
   actions: {
     async fetchInboxes() {
-      this.loading = true
-      this.error = null
+      // Se for a primeira vez, mostramos o loading (skeleton)
+      if (!this.isLoadedOnce) {
+        this.isLoading = true
+      }
+      
       try {
         const response = await api.get('/inboxes')
-        // Assume API returns an array of inboxes directly or { data: [...] } or { inboxes: [...] }
-        // We will just use response.data directly based on typical Rails scaffold.
-        this.inboxes = response.data
-      } catch (err) {
-        this.error = 'Failed to load inboxes'
-        console.error(err)
+        
+        // Atualiza a lista mesclando os status já existentes para não piscar
+        this.inboxes = response.data.map(newInbox => {
+          const oldInbox = this.inboxes.find(i => i.id === newInbox.id)
+          return {
+            ...newInbox,
+            connected: oldInbox && oldInbox.connected !== undefined ? oldInbox.connected : (newInbox.provider === 'baileys' ? undefined : null)
+          }
+        })
+        
+        this.isLoadedOnce = true
+        
+        // Busca os status do Baileys em background
+        this.inboxes.forEach(inbox => {
+          if (inbox.provider === 'baileys') {
+            this.checkStatus(inbox.id)
+          }
+        })
+      } catch (error) {
+        console.error('Failed to fetch inboxes:', error)
       } finally {
-        this.loading = false
+        this.isLoading = false
       }
+    },
+    
+    async checkStatus(id) {
+      try {
+        const response = await api.get(`/inboxes/${id}/status`)
+        const inbox = this.inboxes.find(i => i.id === id)
+        if (inbox) {
+          inbox.connected = response.data.connected
+        }
+      } catch (error) {
+        const inbox = this.inboxes.find(i => i.id === id)
+        if (inbox) {
+          inbox.connected = false
+        }
+      }
+    },
+    
+    removeInbox(id) {
+      this.inboxes = this.inboxes.filter(i => i.id !== id)
     }
   }
 })

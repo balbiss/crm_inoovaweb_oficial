@@ -4,6 +4,7 @@ import api from '../api'
 export const useConversationsStore = defineStore('conversations', {
   state: () => ({
     conversations: [],
+    agents: [],
     activeConversationId: null,
     currentFilter: 'todos', // todos, minhas, nao-atribuidos
     sidebarFilter: 'all',
@@ -38,12 +39,12 @@ export const useConversationsStore = defineStore('conversations', {
       if (state.sortType === 'unread') {
         filtered = filtered.filter(c => c.unread > 0)
       } else if (state.sortType === 'mentions') {
-        filtered = filtered.filter(c => false) // Mock mentions
+        filtered = filtered.filter(() => false) // Mock mentions
       }
 
       // Sidebar route param filter overrides
       if (state.sidebarFilter === 'mencoes') {
-        filtered = filtered.filter(c => false) // Mock
+        filtered = filtered.filter(() => false) // Mock
       } else if (state.sidebarFilter === 'participantes') {
         filtered = filtered.filter(c => c.assignee !== state.currentUser.name) // Mock
       } else if (state.sidebarFilter === 'nao-atendidas') {
@@ -113,6 +114,33 @@ export const useConversationsStore = defineStore('conversations', {
         this.setupWebSocket()
       } catch (error) {
         console.error('Error fetching conversations:', error)
+      }
+    },
+
+    async fetchAgents() {
+      try {
+        const response = await api.get('/agents')
+        this.agents = response.data
+      } catch (error) {
+        console.error('Error fetching agents:', error)
+      }
+    },
+
+    async assignConversation(conversationId, userId) {
+      try {
+        const response = await api.put(`/conversations/${conversationId}`, {
+          conversation: { user_id: userId }
+        })
+        
+        const convIndex = this.conversations.findIndex(c => c.id === conversationId)
+        if (convIndex !== -1) {
+          // Update the local conversation state
+          this.conversations[convIndex].assignee_id = response.data.assignee_id
+          this.conversations[convIndex].assignee = response.data.assignee
+        }
+      } catch (error) {
+        console.error('Error assigning conversation:', error)
+        throw error
       }
     },
 
@@ -214,6 +242,28 @@ export const useConversationsStore = defineStore('conversations', {
       }
     },
 
+    async addNote(contactId, content) {
+      try {
+        const response = await api.post(`/contacts/${contactId}/add_note`, { content })
+        
+        // Update contact notes in all conversations that match
+        this.conversations.forEach(c => {
+          if (c.contact && c.contact.id === contactId) {
+            if (!c.contact.notes) c.contact.notes = []
+            c.contact.notes.unshift({
+              id: response.data.id,
+              content: response.data.content,
+              created_at: response.data.created_at,
+              author: response.data.user?.first_name || 'Sistema'
+            })
+          }
+        })
+      } catch (error) {
+        console.error('Error adding note:', error)
+        throw error
+      }
+    },
+
     async mergeContact(contactId, targetContactId) {
       try {
         await api.post(`/contacts/${contactId}/merge`, { target_contact_id: targetContactId })
@@ -248,15 +298,14 @@ export const useConversationsStore = defineStore('conversations', {
       if (!baseURL) {
         baseURL = window.location.origin.replace(':5173', ':3000')
       }
-      
+
       const wsURL = baseURL.replace(/^http/, 'ws') + '/cable'
-      console.log('Connecting to Action Cable WebSocket:', wsURL)
-      
       const ws = new WebSocket(wsURL)
       this.ws = ws
+      this._wsReconnectDelay = this._wsReconnectDelay || 3000
 
       ws.onopen = () => {
-        console.log('Action Cable WebSocket connected')
+        this._wsReconnectDelay = 3000
         ws.send(JSON.stringify({
           command: 'subscribe',
           identifier: JSON.stringify({ channel: 'ConversationsChannel' })
@@ -266,63 +315,55 @@ export const useConversationsStore = defineStore('conversations', {
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data)
-          if (data.type === 'ping' || data.type === 'welcome' || data.type === 'confirm_subscription') {
-            return
-          }
+          if (data.type === 'ping' || data.type === 'welcome' || data.type === 'confirm_subscription') return
 
-          console.log('WebSocket message received:', data)
           const payload = data.message
           if (!payload) return
 
-          console.log('WS event:', payload.event, 'payload:', payload)
-
           if (payload.event === 'message_created') {
             const { conversation_id, message: newMsg } = payload
-            console.log('Searching for conversation_id:', conversation_id, 'type:', typeof conversation_id)
-            console.log('Available conversation IDs:', this.conversations.map(c => `${c.id} (${typeof c.id})`))
-            
             const conv = this.conversations.find(c => Number(c.id) === Number(conversation_id))
             if (conv) {
               if (!conv.messages) conv.messages = []
               const exists = conv.messages.some(m => m.id === newMsg.id)
-              console.log('Message exists in conversation?', exists)
               if (!exists) {
                 conv.messages.push(newMsg)
                 conv.preview = newMsg.text
                 conv.timestamp = newMsg.timestamp
-                console.log('Added message to store reactively!')
-                
                 if (Number(conversation_id) !== Number(this.activeConversationId)) {
                   conv.unread = (conv.unread || 0) + 1
                 }
-                
                 window.dispatchEvent(new CustomEvent('new-message', {
                   detail: { conversationId: conversation_id }
                 }))
               }
             } else {
-              console.warn('Conversation not found in list, fetching conversations again...')
               this.fetchConversations()
             }
           } else if (payload.event === 'inbox_updated') {
-            window.dispatchEvent(new CustomEvent('inbox-updated', {
-              detail: payload
-            }))
+            window.dispatchEvent(new CustomEvent('inbox-updated', { detail: payload }))
+          } else if (payload.event === 'contact_updated') {
+            window.dispatchEvent(new CustomEvent('contact-updated', { detail: payload }))
+          } else if (payload.event === 'conversation_tags_updated') {
+            const conv = this.conversations.find(c => c.id === payload.conversation_id)
+            if (conv) conv.tags = payload.tags
+          } else if (payload.event === 'conversation_updated') {
+            const idx = this.conversations.findIndex(c => Number(c.id) === Number(payload.conversation?.id))
+            if (idx !== -1) Object.assign(this.conversations[idx], payload.conversation)
           }
         } catch (error) {
-          console.error('Error handling WebSocket message:', error)
+          console.error('WS message error:', error)
         }
       }
 
       ws.onclose = () => {
         this.ws = null
-        setTimeout(() => {
-          this.setupWebSocket()
-        }, 3000)
+        const delay = Math.min(this._wsReconnectDelay || 3000, 30000)
+        this._wsReconnectDelay = delay * 2
+        setTimeout(() => this.setupWebSocket(), delay)
       }
 
-      ws.onerror = (error) => {
-        console.error('WebSocket error:', error)
+      ws.onerror = () => {
         ws.close()
       }
     }

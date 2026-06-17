@@ -345,7 +345,7 @@ const submitForm = async () => {
             
             <div class="existing-photos-gallery" v-if="existingPhotos.length > 0">
               <div v-for="photo in existingPhotos" :key="photo.id" class="photo-thumbnail">
-                <img :src="'http://localhost:3000' + photo.url" alt="Foto atual">
+                <img :src="photo.url" alt="Foto atual">
                 <button type="button" class="btn-remove-photo" @click="removeExistingPhoto(photo.id)" title="Remover Foto">×</button>
               </div>
             </div>

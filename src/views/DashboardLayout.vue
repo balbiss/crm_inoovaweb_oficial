@@ -1,9 +1,14 @@
 <script setup>
 import { onMounted, onUnmounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import Swal from 'sweetalert2'
 import { useInboxesStore } from '../store/inboxes'
+import { useContactsStore } from '../store/contacts'
+import { usePropertiesStore } from '../store/properties'
+import { useCondominiumsStore } from '../store/condominiums'
+import { useAppointmentsStore } from '../store/appointments'
+import { useAgentsStore } from '../store/agents'
 import { 
   Search, 
   Inbox, 
@@ -40,10 +45,12 @@ import {
   ArrowDown,
   Bell,
   HelpCircle,
-  CalendarDays
+  CalendarDays,
+  Badge
 } from 'lucide-vue-next'
 
 const router = useRouter()
+const route = useRoute()
 const isSettingsOpen = ref(false)
 const showUserMenu = ref(false)
 const autoOffline = ref(false)
@@ -115,9 +122,24 @@ const markAllAsRead = async () => {
 }
 
 const inboxesStore = useInboxesStore()
+const contactsStore = useContactsStore()
+const propertiesStore = usePropertiesStore()
+const condominiumsStore = useCondominiumsStore()
+const appointmentsStore = useAppointmentsStore()
+const agentsStore = useAgentsStore()
 
 // Dados reais do usuário logado
 const currentUser = ref({ first_name: '', last_name: '', email: '', account_name: '' })
+const tags = ref([])
+
+const fetchTags = async () => {
+  try {
+    const response = await api.get('/tags')
+    tags.value = response.data
+  } catch (error) {
+    console.error('Erro ao carregar tags', error)
+  }
+}
 
 const loadUser = () => {
   try {
@@ -221,18 +243,30 @@ const handlePaletteKeydown = (e) => {
 
 onMounted(() => {
   loadUser()
+  
+  // Preload Global Store Data for Instantaneous Navigation
   inboxesStore.fetchInboxes()
+  contactsStore.fetchContacts()
+  propertiesStore.fetchProperties()
+  condominiumsStore.fetchCondominiums()
+  appointmentsStore.fetchAppointments()
+  agentsStore.fetchAgents()
+
   window.addEventListener('keydown', handlePaletteKeydown)
   const savedTheme = localStorage.getItem('theme') || 'system'
   applyTheme(savedTheme)
   
   fetchNotifications()
   notificationInterval = setInterval(fetchNotifications, 10000) // Verifica a cada 10 segundos
+
+  fetchTags()
+  window.addEventListener('tags-updated', fetchTags)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handlePaletteKeydown)
   if (notificationInterval) clearInterval(notificationInterval)
+  window.removeEventListener('tags-updated', fetchTags)
 })
 
 const handleLogout = () => {
@@ -336,9 +370,14 @@ const handleLogout = () => {
           <span>Condomínios</span>
         </router-link>
 
-        <router-link to="/agendamentos" class="nav-item">
+        <router-link to="/agendamentos" class="nav-item" active-class="active">
           <CalendarDays class="icon" />
           <span>Agendamentos</span>
+        </router-link>
+
+        <router-link to="/agentes" class="nav-item" active-class="active">
+          <Badge class="icon" />
+          <span>Agentes</span>
         </router-link>
 
         <router-link to="/funil" class="nav-item">
@@ -361,15 +400,11 @@ const handleLogout = () => {
           </router-link>
         </div>
 
-        <div class="nav-section">
+        <div class="nav-section" v-if="tags.length > 0">
           <h3 class="section-title">Etiquetas</h3>
-          <a href="#" class="nav-item sub-item">
-            <span class="tag-color" style="background: #8b5cf6"></span>
-            <span>Alta Prioridade</span>
-          </a>
-          <a href="#" class="nav-item sub-item">
-            <span class="tag-color" style="background: #ef4444"></span>
-            <span>Fechamento</span>
+          <a href="#" class="nav-item sub-item" v-for="tag in tags" :key="tag.id">
+            <span class="tag-color" :style="{ background: tag.color }"></span>
+            <span>{{ tag.name }}</span>
           </a>
         </div>
 
@@ -387,7 +422,7 @@ const handleLogout = () => {
             <a href="#" class="nav-item sub-item"><User class="icon-sm" /> Agentes</a>
             <a href="#" class="nav-item sub-item"><Users class="icon-sm" /> Times</a>
             <router-link to="/settings/inboxes" class="nav-item sub-item"><Inbox class="icon-sm" /> Caixas de Entrada</router-link>
-            <a href="#" class="nav-item sub-item"><Tag class="icon-sm" /> Etiquetas</a>
+            <router-link to="/settings/tags" class="nav-item sub-item" active-class="active"><Tag class="icon-sm" /> Etiquetas</router-link>
             <a href="#" class="nav-item sub-item"><Code class="icon-sm" /> Atributos Personalizados</a>
             <a href="#" class="nav-item sub-item"><RefreshCw class="icon-sm" /> Automação</a>
             <a href="#" class="nav-item sub-item"><Bot class="icon-sm" /> Robôs</a>

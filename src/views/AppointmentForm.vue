@@ -2,9 +2,14 @@
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
+import { useAppointmentsStore } from '../store/appointments'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
 const route = useRoute()
+const appointmentsStore = useAppointmentsStore()
+const { contacts, properties, brokers } = storeToRefs(appointmentsStore)
+
 const isEditing = ref(false)
 const isLoading = ref(false)
 const isSubmitting = ref(false)
@@ -19,39 +24,30 @@ const form = ref({
   broker_name: ''
 })
 
-const contacts = ref([])
-const properties = ref([])
-const brokers = [
-  'Andrews Miranda Vieira',
-  'Washington Luiz',
-  'Viviane Gasparotto Caversan'
-] // Mocked to match screenshot
-
 const selectedProperty = computed(() => {
   if (!form.value.property_id) return null
   return properties.value.find(p => p.id === form.value.property_id)
 })
-
-const fetchData = async () => {
-  try {
-    const [resContacts, resProps] = await Promise.all([
-      api.get('/contacts'),
-      api.get('/properties')
-    ])
-    contacts.value = resContacts.data
-    properties.value = resProps.data
-  } catch (error) {
-    console.error("Erro ao carregar selects:", error)
-  }
-}
 
 const loadAppointment = async (id) => {
   isLoading.value = true
   try {
     const response = await api.get(`/appointments/${id}`)
     const data = response.data
+    
+    let st = data.start_time || ''
+    let et = data.end_time || ''
+    
+    // Formata o HH:MM para YYYY-MM-DDTHH:MM para funcionar no input datetime-local
+    if (st.length === 5 && data.appointment_date) st = `${data.appointment_date}T${st}`
+    if (et.length === 5 && data.appointment_date) et = `${data.appointment_date}T${et}`
+    if (st && st.length > 16) st = st.substring(0, 16)
+    if (et && et.length > 16) et = et.substring(0, 16)
+
     form.value = {
       ...data,
+      start_time: st,
+      end_time: et,
       contact_id: data.contact_id || '',
       property_id: data.property_id || ''
     }
@@ -63,7 +59,7 @@ const loadAppointment = async (id) => {
 }
 
 onMounted(async () => {
-  await fetchData()
+  await appointmentsStore.fetchMetaData()
   if (route.params.id) {
     isEditing.value = true
     loadAppointment(route.params.id)

@@ -3,10 +3,12 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Filter, Search, Plus } from '@lucide/vue'
 import api from '../api'
+import { useCondominiumsStore } from '../store/condominiums'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
-const condominiums = ref([])
-const isLoading = ref(true)
+const condominiumsStore = useCondominiumsStore()
+const { condominiums, isLoading } = storeToRefs(condominiumsStore)
 
 const filters = ref({
   search: '',
@@ -15,16 +17,8 @@ const filters = ref({
   progress: ''
 })
 
-const fetchCondominiums = async () => {
-  try {
-    isLoading.value = true
-    const response = await api.get('/condominiums')
-    condominiums.value = response.data
-  } catch (error) {
-    console.error('Erro ao carregar condomínios', error)
-  } finally {
-    isLoading.value = false
-  }
+const fetchCondominiums = () => {
+  condominiumsStore.fetchCondominiums()
 }
 
 onMounted(() => {
@@ -115,9 +109,17 @@ const formatDate = (dateString) => {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="isLoading">
-            <td colspan="7" class="text-center py-4">Carregando condomínios...</td>
-          </tr>
+          <template v-if="isLoading">
+            <tr v-for="i in 3" :key="'skel'+i" class="skeleton-row">
+              <td><div class="skeleton-line short"></div></td>
+              <td><div class="skeleton-line short"></div></td>
+              <td><div class="skeleton-line"></div></td>
+              <td><div class="skeleton-line"></div></td>
+              <td><div class="skeleton-line"></div></td>
+              <td><div class="skeleton-line"></div></td>
+              <td><div class="skeleton-line short"></div></td>
+            </tr>
+          </template>
           <tr v-else-if="condominiums.length === 0">
             <td colspan="7" class="text-center py-4 text-muted">Nenhum condomínio encontrado.</td>
           </tr>
@@ -330,7 +332,26 @@ const formatDate = (dateString) => {
 .text-muted { color: var(--text-muted); }
 .icon-sm { width: 16px; height: 16px; }
 
-/* FAB */
+/* Skeleton Loader */
+.skeleton-row {
+  animation: pulse-skeleton 1.5s infinite;
+  
+  .skeleton-line {
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    width: 120px;
+    
+    &.short { width: 60px; }
+  }
+}
+
+@keyframes pulse-skeleton {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
 .fab {
   position: fixed;
   bottom: 2rem;

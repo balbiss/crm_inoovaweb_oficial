@@ -1,23 +1,16 @@
 <script setup>
-import { ref, onMounted } from 'vue'
-import { Search, Settings2, Trash2, Plus } from '@lucide/vue'
+import { onMounted } from 'vue'
+import { Search, Settings2, Trash2, ChevronRight } from 'lucide-vue-next'
 import api from '../api'
 import Swal from 'sweetalert2'
+import { useInboxesStore } from '../store/inboxes'
+import { storeToRefs } from 'pinia'
 
-const inboxes = ref([])
-const showAddModal = ref(false)
-
-const fetchInboxes = async () => {
-  try {
-    const response = await api.get('/inboxes')
-    inboxes.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch inboxes:', error)
-  }
-}
+const inboxesStore = useInboxesStore()
+const { inboxes, isLoading } = storeToRefs(inboxesStore)
 
 onMounted(() => {
-  fetchInboxes()
+  inboxesStore.fetchInboxes()
 })
 
 const deleteInbox = async (id) => {
@@ -30,11 +23,15 @@ const deleteInbox = async (id) => {
   })
   
   if (result.isConfirmed) {
-    await api.delete(`/inboxes/${id}`)
-    fetchInboxes()
+    try {
+      await api.delete(`/inboxes/${id}`)
+      inboxesStore.removeInbox(id)
+    } catch (error) {
+      console.error('Failed to delete inbox:', error)
+      Swal.fire('Erro', 'Não foi possível deletar a caixa de entrada', 'error')
+    }
   }
 }
-
 </script>
 
 <template>
@@ -43,8 +40,9 @@ const deleteInbox = async (id) => {
       <div class="header">
         <h1>Caixas de Entrada</h1>
         <p class="description">
-          Conecte sua API do Baileys para enviar e receber mensagens reais via WhatsApp.
+          Um canal é o modo de comunicação que seu cliente escolhe para interagir com você. Uma caixa de entrada é onde você gerencia interações para um canal específico. Pode incluir comunicações de várias fontes, como e-mail, chat ao vivo e mídia social.
         </p>
+        <a href="#" class="learn-more">Saiba mais sobre as caixas de entrada <ChevronRight class="icon-xs" /></a>
       </div>
 
       <div class="actions-bar">
@@ -62,25 +60,54 @@ const deleteInbox = async (id) => {
       </div>
 
       <div class="inbox-list">
-        <div class="inbox-card" v-for="inbox in inboxes" :key="inbox.id">
-          <div class="inbox-info">
-            <div class="icon-wrapper">
-              <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#25d366" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-message-circle"><path d="m3 21 1.9-5.7a8.5 8.5 0 1 1 3.8 3.8z"/></svg>
+        <div v-if="isLoading" class="skeleton-list">
+          <div class="skeleton-card" v-for="i in 3" :key="i">
+            <div class="skeleton-avatar"></div>
+            <div class="skeleton-text">
+              <div class="skeleton-line title"></div>
+              <div class="skeleton-line subtitle"></div>
             </div>
-            <div class="inbox-details">
-              <h3>{{ inbox.name }}</h3>
-              <span class="provider">{{ inbox.provider.toUpperCase() }} ({{ inbox.phone_number }})</span>
+            <div class="skeleton-actions">
+              <div class="skeleton-circle"></div>
+              <div class="skeleton-circle"></div>
+            </div>
+          </div>
+        </div>
+
+        <template v-else>
+          <div class="inbox-card" v-for="inbox in inboxes" :key="inbox.id">
+            <div class="inbox-info">
+              <div class="icon-wrapper" style="background: transparent; border: none; padding: 0;">
+                <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="#25D366">
+                  <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+                </svg>
+              </div>
+              <div class="inbox-details">
+                <h3>{{ inbox.name }}</h3>
+                <div class="provider-row">
+                  <span class="provider">WhatsApp - {{ inbox.provider.charAt(0).toUpperCase() + inbox.provider.slice(1) }}</span>
+                  <span v-if="inbox.provider === 'baileys'" class="status-badge" :class="{
+                    connected: inbox.connected === true,
+                    disconnected: inbox.connected === false,
+                    loading: inbox.connected === undefined
+                  }">
+                    <span class="dot"></span>
+                    {{ inbox.connected === true ? 'Conectado' : (inbox.connected === false ? 'Desconectado' : 'Verificando...') }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="inbox-actions">
+              <router-link :to="`/settings/inboxes/${inbox.id}`" class="icon-btn" title="Configurações"><Settings2 class="icon-sm" /></router-link>
+              <button class="icon-btn text-danger" @click="deleteInbox(inbox.id)" title="Deletar"><Trash2 class="icon-sm" /></button>
             </div>
           </div>
           
-          <div class="inbox-actions">
-            <button class="icon-btn" @click="deleteInbox(inbox.id)"><Trash2 class="icon-sm" /></button>
+          <div v-if="inboxes.length === 0" class="empty-state">
+            Nenhuma caixa de entrada configurada.
           </div>
-        </div>
-        
-        <div v-if="inboxes.length === 0" class="empty-state">
-          Nenhuma caixa de entrada configurada.
-        </div>
+        </template>
       </div>
     </div>
     
@@ -120,7 +147,23 @@ const deleteInbox = async (id) => {
     margin-bottom: 0.75rem;
     max-width: 800px;
   }
+  
+  .learn-more {
+    color: var(--primary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    
+    &:hover {
+      text-decoration: underline;
+    }
+  }
 }
+
+.icon-xs { width: 14px; height: 14px; }
 
 .actions-bar {
   display: flex;
@@ -238,22 +281,125 @@ const deleteInbox = async (id) => {
   }
 
   .inbox-details {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-
     h3 {
-      font-size: 0.9rem;
-      font-weight: 600;
+      margin: 0 0 0.25rem 0;
+      font-size: 1rem;
       color: var(--text-main);
-      margin: 0;
+    }
+
+    .provider-row {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
     }
 
     .provider {
       font-size: 0.85rem;
       color: var(--text-muted);
     }
+    
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      padding: 0.15rem 0.5rem;
+      border-radius: 12px;
+      
+      .dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+      }
+      
+      &.connected {
+        background: #d1fae5;
+        color: #059669;
+        .dot { background: #10b981; }
+      }
+      
+      &.disconnected {
+        background: #fee2e2;
+        color: #dc2626;
+        .dot { background: #ef4444; }
+      }
+      
+      &.loading {
+        background: #f3f4f6;
+        color: #6b7280;
+        .dot { 
+          background: #9ca3af; 
+          animation: pulse 1.5s infinite;
+        }
+      }
+    }
   }
+}
+
+@keyframes pulse {
+  0% { opacity: 0.5; }
+  50% { opacity: 1; }
+  100% { opacity: 0.5; }
+}
+
+.skeleton-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.skeleton-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  animation: pulse-skeleton 1.5s infinite;
+  
+  .skeleton-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    background: var(--bg-hover);
+    margin-right: 1.5rem;
+  }
+  
+  .skeleton-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  .skeleton-line {
+    height: 12px;
+    background: var(--bg-hover);
+    border-radius: 4px;
+    
+    &.title { width: 150px; height: 16px; }
+    &.subtitle { width: 100px; }
+  }
+  
+  .skeleton-actions {
+    display: flex;
+    gap: 0.5rem;
+    
+    .skeleton-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 6px;
+      background: var(--bg-hover);
+    }
+  }
+}
+
+@keyframes pulse-skeleton {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
 .inbox-actions {

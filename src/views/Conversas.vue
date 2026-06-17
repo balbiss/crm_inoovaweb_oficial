@@ -31,9 +31,13 @@ import {
   Plus,
   ArrowRight,
   ChevronDown,
+  Sparkles,
+  Loader2,
   BotOff,
   Bot
 } from '@lucide/vue'
+
+import api from '../api'
 
 import EmojiPicker from 'vue3-emoji-picker'
 import 'vue3-emoji-picker/css'
@@ -41,13 +45,102 @@ import 'vue3-emoji-picker/css'
 import EditContactModal from '../components/EditContactModal.vue'
 import MergeContactModal from '../components/MergeContactModal.vue'
 import DeleteContactModal from '../components/DeleteContactModal.vue'
-import api from '../api'
+import ScheduleMessageModal from '../components/ScheduleMessageModal.vue'
 
 const store = useConversationsStore()
 const route = useRoute()
 const newMessageText = ref('')
 const isPrivateMessage = ref(false)
 const isEmojiPickerOpen = ref(false)
+
+const isScheduleModalOpen = ref(false)
+const scheduledMessages = ref([])
+
+const openScheduleModal = () => {
+  isScheduleModalOpen.value = true
+}
+
+const closeScheduleModal = () => {
+  isScheduleModalOpen.value = false
+}
+
+const fetchScheduledMessages = async () => {
+  if (!store.activeConversation) return
+  try {
+    const response = await api.get(`/conversations/${store.activeConversation.id}/scheduled_messages`)
+    scheduledMessages.value = response.data
+  } catch (error) {
+    console.error('Error fetching scheduled messages:', error)
+  }
+}
+
+const onMessageScheduled = (newScheduledMessage) => {
+  scheduledMessages.value.push(newScheduledMessage)
+  // Sort them just in case
+  scheduledMessages.value.sort((a, b) => new Date(a.send_at) - new Date(b.send_at))
+}
+
+const cancelScheduledMessage = async (msgId) => {
+  if (!confirm('Tem certeza que deseja cancelar este agendamento?')) return
+  try {
+    await api.delete(`/conversations/${store.activeConversation.id}/scheduled_messages/${msgId}`)
+    scheduledMessages.value = scheduledMessages.value.filter(m => m.id !== msgId)
+  } catch (error) {
+    console.error('Error canceling scheduled message:', error)
+    alert('Erro ao cancelar agendamento.')
+  }
+}
+
+const isAssigning = ref(false)
+
+const handleAssign = async (userId) => {
+  if (!store.activeConversation) return
+  isAssigning.value = true
+  try {
+    const newUserId = userId ? parseInt(userId) : null
+    await store.assignConversation(store.activeConversation.id, newUserId)
+  } catch (error) {
+    console.error('Error assigning conversation:', error)
+    alert('Erro ao atribuir a conversa.')
+  } finally {
+    isAssigning.value = false
+  }
+}
+
+const conversationAttachments = computed(() => {
+  if (!store.activeConversation?.messages) return []
+  return store.activeConversation.messages.filter(m => m.attachmentUrl).reverse() // reverse to show latest first
+})
+
+const isAttachmentsOpen = ref(false)
+
+const isAttributesOpen = ref(false)
+
+const isNotesOpen = ref(false)
+const newNoteText = ref('')
+const isSavingNote = ref(false)
+
+const saveNote = async () => {
+  if (!store.activeConversation?.contact?.id || !newNoteText.value.trim()) return
+  isSavingNote.value = true
+  try {
+    await store.addNote(store.activeConversation.contact.id, newNoteText.value.trim())
+    newNoteText.value = ''
+  } catch (error) {
+    console.error('Error saving note:', error)
+    alert('Erro ao salvar nota.')
+  } finally {
+    isSavingNote.value = false
+  }
+}
+
+watch(() => store.activeConversation, (newVal) => {
+  if (newVal) {
+    fetchScheduledMessages()
+  } else {
+    scheduledMessages.value = []
+  }
+}, { immediate: true })
 
 const toggleEmojiPicker = () => {
   isEmojiPickerOpen.value = !isEmojiPickerOpen.value
@@ -59,6 +152,23 @@ const onSelectEmoji = (emoji) => {
 
 const closeEmojiPicker = () => {
   isEmojiPickerOpen.value = false
+}
+
+const isGeneratingSummary = ref(false)
+
+const generateSummary = async () => {
+  if (!store.activeConversation) return
+  isGeneratingSummary.value = true
+  try {
+    const response = await api.post(`/conversations/${store.activeConversation.id}/generate_summary`)
+    isPrivateMessage.value = true
+    newMessageText.value = response.data.summary
+  } catch (error) {
+    console.error('Error generating summary:', error)
+    alert('Erro ao gerar resumo da conversa.')
+  } finally {
+    isGeneratingSummary.value = false
+  }
 }
 
 const formatMessageTime = (isoString) => {
@@ -123,19 +233,10 @@ const messagesContainerRef = ref(null)
 
 const scrollToBottom = async () => {
   await nextTick()
-  const doScroll = () => {
-    if (messagesContainerRef.value) {
-      messagesContainerRef.value.scrollTop = messagesContainerRef.value.scrollHeight
-    } else {
-      const container = document.querySelector('.chat-messages')
-      if (container) container.scrollTop = container.scrollHeight
-    }
-  }
-  
-  doScroll()
-  setTimeout(doScroll, 50)
-  setTimeout(doScroll, 300)
-  setTimeout(doScroll, 800)
+  requestAnimationFrame(() => {
+    const el = messagesContainerRef.value || document.querySelector('.chat-messages')
+    if (el) el.scrollTop = el.scrollHeight
+  })
 }
 
 watch(() => store.activeConversationId, (newVal) => {
@@ -161,8 +262,9 @@ const closeFilterPopover = () => {
   isSortPopoverOpen.value = false
 }
 
-onMounted(async () => {
-  await store.fetchConversations()
+onMounted(() => {
+  if (store.conversations.length === 0) store.fetchConversations()
+  if (store.agents.length === 0) store.fetchAgents()
   if (route.params.inboxId) {
     store.setSidebarInboxId(route.params.inboxId)
   } else {
@@ -184,6 +286,7 @@ onUnmounted(() => {
   window.removeEventListener('new-message', handleNewMessage)
   document.removeEventListener('click', closeEmojiPicker)
   document.removeEventListener('click', closeFilterPopover)
+  clearInterval(aiStatusInterval.value)
 })
 
 watch(() => route.params.filter, (newFilter) => {
@@ -286,6 +389,9 @@ watch(() => store.activeConversationId, (newId) => {
 
 onUnmounted(() => {
   clearInterval(aiStatusInterval.value)
+  window.removeEventListener('new-message', handleNewMessage)
+  document.removeEventListener('click', closeEmojiPicker)
+  document.removeEventListener('click', closeFilterPopover)
 })
 </script>
 
@@ -356,8 +462,13 @@ onUnmounted(() => {
               <span class="conv-time">{{ formatMessageTime(conv.timestamp) }}</span>
             </div>
             <div class="conv-preview">
-              <span v-if="conv.unread > 0" class="unread-badge"></span> 
+              <span v-if="conv.unread > 0" class="unread-badge"></span>
               <span>{{ conv.preview }}</span>
+            </div>
+            <div v-if="conv.tags && conv.tags.length > 0" class="conv-tags">
+              <span v-for="tag in conv.tags" :key="tag.id" class="conv-tag" :style="{ background: tag.color, color: '#fff' }">
+                {{ tag.name }}
+              </span>
             </div>
           </div>
         </div>
@@ -452,8 +563,15 @@ onUnmounted(() => {
 
       <div class="chat-input-area" v-if="store.activeConversation">
         <div class="input-tabs">
-          <button :class="['input-tab', { active: !isPrivateMessage }]" @click="isPrivateMessage = false">Responder</button>
-          <button :class="['input-tab', { active: isPrivateMessage }]" @click="isPrivateMessage = true">Mensagem Privada</button>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <button :class="['input-tab', { active: !isPrivateMessage }]" @click="isPrivateMessage = false">Responder</button>
+            <button :class="['input-tab', { active: isPrivateMessage }]" @click="isPrivateMessage = true">Mensagem Privada</button>
+          </div>
+          <button class="btn-magic-sm" @click="generateSummary" :disabled="isGeneratingSummary" style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; background: var(--primary); border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: opacity 0.2s; margin-left: auto;">
+            <Loader2 v-if="isGeneratingSummary" class="icon-sm spin" />
+            <Sparkles v-else class="icon-sm" />
+            {{ isGeneratingSummary ? 'Resumindo...' : 'Gerar Resumo' }}
+          </button>
         </div>
         <div class="input-box">
           <div v-if="selectedFile" class="file-preview-area">
@@ -478,6 +596,14 @@ onUnmounted(() => {
                 <div v-if="isEmojiPickerOpen" class="emoji-picker-container" @click.stop>
                   <EmojiPicker :native="true" @select="onSelectEmoji" />
                 </div>
+              </div>
+              <!-- Indicador IA pausada -->
+              <div v-if="aiPauseStatus.paused" class="ai-paused-pill">
+                <BotOff class="pill-icon" />
+                <span>IA pausada · {{ formatAiRemaining(aiPauseStatus.remaining_seconds) }}</span>
+                <button class="pill-resume" @click="resumeAi" title="Reativar IA agora">
+                  <Bot class="pill-icon" />
+                </button>
               </div>
             </div>
             <button class="btn-send" @click="handleSendMessage">Enviar (↵)</button>
@@ -538,84 +664,155 @@ onUnmounted(() => {
           <Minus class="icon-sm" />
         </div>
         <div class="card-body">
-          <button class="btn-text-blue"><Plus class="icon-xs" /> Agendar mensagem</button>
-          <p class="empty-text">Ainda não há mensagens agendadas.</p>
+          <button class="btn-text-blue" @click="openScheduleModal"><Plus class="icon-xs" /> Agendar mensagem</button>
+          
+          <div v-if="scheduledMessages.length > 0" class="scheduled-list-ui">
+            <div v-for="msg in scheduledMessages" :key="msg.id" class="scheduled-item-ui">
+              <div class="sch-header">
+                <span class="sch-time">{{ new Date(msg.send_at).toLocaleString('pt-BR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) }}</span>
+                <button class="icon-btn-cancel" @click="cancelScheduledMessage(msg.id)" title="Cancelar envio"><X class="icon-xxs" /></button>
+              </div>
+              <div class="sch-content">
+                <p v-if="msg.text">{{ msg.text.length > 50 ? msg.text.substring(0, 50) + '...' : msg.text }}</p>
+                <div v-if="msg.attachmentUrl" class="sch-attachment">📎 {{ msg.attachmentName || 'Anexo' }}</div>
+              </div>
+            </div>
+          </div>
+          <p v-else class="empty-text">Ainda não há mensagens agendadas.</p>
         </div>
       </div>
-
+      
       <div class="accordion-card">
         <div class="card-header">
-          <h3>Ações da conversa</h3>
-          <Plus class="icon-sm" />
+          <h3>Atendente</h3>
+        </div>
+        <div class="card-body" style="padding-top: 0.5rem; padding-bottom: 1rem;">
+          <select 
+            class="assign-select"
+            :value="store.activeConversation?.assignee_id || ''"
+            @change="handleAssign($event.target.value)"
+            :disabled="isAssigning"
+          >
+            <option value="">Nenhum (Não atribuído)</option>
+            <option v-for="agent in store.agents" :key="agent.id" :value="agent.id">
+              {{ agent.first_name }} {{ agent.last_name }}
+            </option>
+          </select>
         </div>
       </div>
-
       <div class="accordion-card">
-        <div class="card-header">
-          <h3>Macros</h3>
-          <Plus class="icon-sm" />
-        </div>
-      </div>
-
-      <div class="accordion-card">
-        <div class="card-header">
-          <h3>Informação da conversa</h3>
-          <Plus class="icon-sm" />
-        </div>
-      </div>
-
-      <div class="accordion-card">
-        <div class="card-header">
+        <div class="card-header" @click="isAttributesOpen = !isAttributesOpen" style="cursor: pointer;">
           <h3>Atributos do contato</h3>
-          <Plus class="icon-sm" />
+          <Minus v-if="isAttributesOpen" class="icon-sm" />
+          <Plus v-else class="icon-sm" />
+        </div>
+        <div class="card-body attributes-grid" v-if="isAttributesOpen" style="padding-top: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem;">
+          <div class="attr-row" v-if="store.activeConversation?.contact?.email">
+            <span class="attr-label">Email:</span>
+            <span class="attr-val">{{ store.activeConversation.contact.email }}</span>
+          </div>
+          <div class="attr-row" v-if="store.activeConversation?.contact?.cpf">
+            <span class="attr-label">CPF:</span>
+            <span class="attr-val">{{ store.activeConversation.contact.cpf }}</span>
+          </div>
+          <div class="attr-row" v-if="store.activeConversation?.contact?.profession">
+            <span class="attr-label">Profissão:</span>
+            <span class="attr-val">{{ store.activeConversation.contact.profession }}</span>
+          </div>
+          <div class="attr-row" v-if="store.activeConversation?.contact?.gross_income">
+            <span class="attr-label">Renda Bruta:</span>
+            <span class="attr-val">{{ new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(store.activeConversation.contact.gross_income) }}</span>
+          </div>
+          <div class="attr-row" v-if="store.activeConversation?.contact?.fgts_balance">
+            <span class="attr-label">Saldo FGTS:</span>
+            <span class="attr-val">{{ new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(store.activeConversation.contact.fgts_balance) }}</span>
+          </div>
+          <div class="attr-row" v-if="store.activeConversation?.contact?.dependents">
+            <span class="attr-label">Dependentes:</span>
+            <span class="attr-val">{{ store.activeConversation.contact.dependents }}</span>
+          </div>
+          <div class="attr-row" v-if="store.activeConversation?.contact?.city">
+            <span class="attr-label">Cidade/UF:</span>
+            <span class="attr-val">{{ store.activeConversation.contact.city }} <span v-if="store.activeConversation.contact.state">- {{ store.activeConversation.contact.state }}</span></span>
+          </div>
+
+          <!-- Atributos Personalizados Dinâmicos -->
+          <template v-if="store.activeConversation?.contact?.custom_attributes && Object.keys(store.activeConversation.contact.custom_attributes).length > 0">
+            <div 
+              class="attr-row" 
+              v-for="(val, key) in store.activeConversation.contact.custom_attributes" 
+              :key="key"
+            >
+              <span class="attr-label">{{ key }}:</span>
+              <span class="attr-val">{{ val }}</span>
+            </div>
+          </template>
+
+          <button class="btn-text-blue" @click="openEditModal" style="margin-top: 0.5rem;">
+            <Edit2 class="icon-xs" style="margin-right: 0.3rem;" /> Editar atributos
+          </button>
         </div>
       </div>
 
       <div class="accordion-card">
-        <div class="card-header">
+        <div class="card-header" @click="isNotesOpen = !isNotesOpen" style="cursor: pointer;">
           <h3>Notas do contato</h3>
-          <Plus class="icon-sm" />
+          <Minus v-if="isNotesOpen" class="icon-sm" />
+          <Plus v-else class="icon-sm" />
+        </div>
+        <div class="card-body" v-if="isNotesOpen" style="padding-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+          <div class="notes-list" v-if="store.activeConversation?.contact?.notes?.length > 0">
+            <div class="note-item" v-for="note in store.activeConversation.contact.notes" :key="note.id">
+              <div class="note-header">
+                <span class="note-author">{{ note.author }}</span>
+                <span class="note-time">{{ new Date(note.created_at).toLocaleDateString('pt-BR') }}</span>
+              </div>
+              <div class="note-content">{{ note.content }}</div>
+            </div>
+          </div>
+          <p v-else class="empty-text">Nenhuma nota adicionada.</p>
+          
+          <div class="add-note-box" style="margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.5rem;">
+            <textarea v-model="newNoteText" placeholder="Adicionar nova nota..." rows="2" class="note-textarea"></textarea>
+            <button class="btn-primary" style="padding: 0.4rem; font-size: 0.85rem;" @click="saveNote" :disabled="isSavingNote || !newNoteText.trim()">
+              {{ isSavingNote ? 'Salvando...' : 'Salvar Nota' }}
+            </button>
+          </div>
         </div>
       </div>
 
       <div class="accordion-card">
-        <div class="card-header">
+        <div class="card-header" @click="isAttachmentsOpen = !isAttachmentsOpen" style="cursor: pointer;">
           <h3>Anexos</h3>
-          <Plus class="icon-sm" />
+          <Minus v-if="isAttachmentsOpen" class="icon-sm" />
+          <Plus v-else class="icon-sm" />
+        </div>
+        <div class="card-body" v-if="isAttachmentsOpen" style="padding-top: 0.5rem;">
+          <div v-if="conversationAttachments.length > 0" class="attachments-gallery">
+            <a v-for="att in conversationAttachments" :key="att.id" :href="att.attachmentUrl" target="_blank" class="attachment-thumb">
+              <img v-if="att.attachmentType && att.attachmentType.startsWith('image/')" :src="att.attachmentUrl" alt="Anexo" />
+              <div v-else class="attachment-doc">
+                <span>📎</span>
+                <small>Documento</small>
+              </div>
+            </a>
+          </div>
+          <p v-else class="empty-text">Nenhum anexo nesta conversa.</p>
         </div>
       </div>
 
-      <div class="accordion-card">
-        <div class="card-header">
-          <h3>Conversas anteriores</h3>
-          <Plus class="icon-sm" />
-        </div>
-      </div>
-
-      <div class="accordion-card">
-        <div class="card-header">
-          <h3>Participantes da conversa</h3>
-          <Plus class="icon-sm" />
-        </div>
-      </div>
     </div>
     
     <!-- Modals -->
-    <EditContactModal 
-      :is-open="isEditModalOpen" 
-      :contact="store.activeConversation?.contact" 
-      @close="isEditModalOpen = false" 
-    />
-    <MergeContactModal 
-      :is-open="isMergeModalOpen" 
-      :contact="store.activeConversation?.contact" 
-      @close="isMergeModalOpen = false" 
-    />
-    <DeleteContactModal
-      :is-open="isDeleteModalOpen"
-      :contact="store.activeConversation?.contact"
-      @close="isDeleteModalOpen = false"
-      @deleted="handleContactDeleted"
+    <EditContactModal :isOpen="isEditModalOpen" :contact="store.activeConversation?.contact" @close="isEditModalOpen = false" />
+    <MergeContactModal :isOpen="isMergeModalOpen" :contact="store.activeConversation?.contact" @close="isMergeModalOpen = false" />
+    <DeleteContactModal :isOpen="isDeleteModalOpen" :contact="store.activeConversation?.contact" @close="isDeleteModalOpen = false" @deleted="handleContactDeleted" />
+    
+    <ScheduleMessageModal 
+      :isOpen="isScheduleModalOpen" 
+      :conversationId="store.activeConversation?.id" 
+      @close="closeScheduleModal" 
+      @scheduled="onMessageScheduled"
     />
   </div>
 </template>
@@ -787,6 +984,24 @@ onUnmounted(() => {
     color: var(--text-muted);
   }
 
+
+  .conv-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    margin-top: 3px;
+  }
+
+  .conv-tag {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 8px;
+    border-radius: 10px;
+    border: none;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  }
 
   .conv-preview {
     font-size: 0.8rem;
@@ -1218,6 +1433,44 @@ onUnmounted(() => {
   }
 }
 
+.ai-paused-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.5rem 0.2rem 0.4rem;
+  background: #1e3a5f;
+  border: 1px solid #2563eb;
+  border-radius: 20px;
+  color: #93c5fd;
+  font-size: 0.72rem;
+  white-space: nowrap;
+
+  .pill-icon {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+  }
+
+  span { font-weight: 500; }
+
+  .pill-resume {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    background: #2563eb;
+    border: none;
+    border-radius: 50%;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    transition: background 0.15s;
+    &:hover { background: #1d4ed8; }
+    .pill-icon { color: white; }
+  }
+}
+
 .chat-input-area {
   padding: 1rem 1.5rem;
   background: var(--bg-secondary);
@@ -1599,5 +1852,178 @@ onUnmounted(() => {
 .clear-file-btn:hover {
   background: #e5e7eb;
   color: #1f2937;
+}
+
+.notes-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.note-item {
+  background: var(--bg-secondary);
+  border-radius: 6px;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+}
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 0.3rem;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+.note-author {
+  font-weight: 600;
+  color: var(--primary);
+}
+.note-content {
+  font-size: 0.85rem;
+  color: var(--text-color);
+  white-space: pre-wrap;
+}
+.note-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.85rem;
+  resize: vertical;
+}
+
+.attr-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.85rem;
+  padding: 0.2rem 0;
+  border-bottom: 1px solid var(--border-color);
+}
+.attr-row:last-child {
+  border-bottom: none;
+}
+.attr-label {
+  color: #64748b;
+  font-weight: 500;
+}
+.attr-val {
+  color: var(--text-color);
+  font-weight: 600;
+  text-align: right;
+  max-width: 60%;
+  word-break: break-word;
+}
+
+.assign-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  font-size: 0.9rem;
+  font-family: inherit;
+  cursor: pointer;
+  outline: none;
+}
+.assign-select:focus {
+  border-color: var(--primary);
+}
+.assign-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.attachments-gallery {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.attachment-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  overflow: hidden;
+  text-decoration: none;
+  transition: transform 0.2s;
+}
+.attachment-thumb:hover {
+  transform: scale(1.05);
+}
+.attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.attachment-doc {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-color);
+}
+.attachment-doc span {
+  font-size: 1.5rem;
+  margin-bottom: 0.2rem;
+}
+.attachment-doc small {
+  font-size: 0.65rem;
+  font-weight: 500;
+  text-align: center;
+  word-break: break-all;
+  padding: 0 0.2rem;
+}
+
+.scheduled-list-ui {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+.scheduled-item-ui {
+  background: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.75rem;
+  font-size: 0.85rem;
+}
+.sch-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+.sch-time {
+  font-weight: 600;
+  color: var(--primary);
+}
+.icon-btn-cancel {
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+}
+.icon-btn-cancel:hover {
+  background: #fef2f2;
+}
+.sch-content p {
+  margin: 0;
+  color: var(--text-color);
+  line-height: 1.4;
+}
+.sch-attachment {
+  margin-top: 0.25rem;
+  color: #64748b;
+  font-size: 0.8rem;
 }
 </style>

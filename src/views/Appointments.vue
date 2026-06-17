@@ -3,10 +3,12 @@ import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { Filter, Search, Plus, Eye, CalendarDays, X } from '@lucide/vue'
 import api from '../api'
+import { useAppointmentsStore } from '../store/appointments'
+import { storeToRefs } from 'pinia'
 
 const router = useRouter()
-const appointments = ref([])
-const isLoading = ref(false)
+const appointmentsStore = useAppointmentsStore()
+const { appointments, isLoading, contacts, properties, brokers } = storeToRefs(appointmentsStore)
 
 // Filters
 const filterStatus = ref('')
@@ -15,41 +17,12 @@ const filterDate = ref('')
 const filterBroker = ref('')
 const filterContact = ref('')
 
-const contacts = ref([])
-const properties = ref([])
-const brokers = [
-  'Andrews Miranda Vieira',
-  'Washington Luiz',
-  'Viviane Gasparotto Caversan'
-]
-
-const fetchAppointments = async () => {
-  isLoading.value = true
-  try {
-    const response = await api.get('/appointments')
-    appointments.value = response.data
-  } catch (error) {
-    console.error('Erro ao buscar agendamentos:', error)
-  } finally {
-    isLoading.value = false
-  }
-}
-
-const fetchData = async () => {
-  try {
-    const [resContacts, resProps] = await Promise.all([
-      api.get('/contacts'),
-      api.get('/properties')
-    ])
-    contacts.value = resContacts.data
-    properties.value = resProps.data
-  } catch (error) {
-    console.error("Erro ao carregar listas:", error)
-  }
+const fetchAppointments = () => {
+  appointmentsStore.fetchAppointments()
 }
 
 onMounted(() => {
-  fetchData()
+  appointmentsStore.fetchMetaData()
   fetchAppointments()
 })
 
@@ -154,16 +127,25 @@ const formatTime = (datetime) => {
           </tr>
         </thead>
         <tbody>
-          <tr v-if="isLoading">
-            <td colspan="8" class="text-center py-4">Carregando agendamentos...</td>
-          </tr>
+          <template v-if="isLoading">
+            <tr v-for="i in 3" :key="'skel'+i" class="skeleton-row">
+              <td><div class="skeleton-line short"></div></td>
+              <td><div class="skeleton-line"></div></td>
+              <td><div class="skeleton-line short"></div></td>
+              <td><div class="skeleton-line short"></div></td>
+              <td><div class="skeleton-line"></div></td>
+              <td><div class="skeleton-line"></div></td>
+              <td><div class="skeleton-line"></div></td>
+              <td><div class="skeleton-action"></div></td>
+            </tr>
+          </template>
           <tr v-else-if="appointments.length === 0">
             <td colspan="8" class="text-center py-4 text-muted">Nenhum agendamento encontrado.</td>
           </tr>
           <tr v-for="app in appointments" :key="app.id" @dblclick="router.push(`/agendamentos/${app.id}/editar`)">
             <td>
-              <span :class="['badge', app.status === 'Confirmado' ? 'badge-success' : 'badge-default']">
-                {{ app.status || 'Pendente' }}
+              <span :class="['badge', (app.status === 'Confirmado' || app.status === 'Agendado' || app.status === 'scheduled') ? 'badge-success' : 'badge-default']">
+                {{ app.status === 'scheduled' ? 'Agendado' : (app.status || 'Pendente') }}
               </span>
             </td>
             <td>{{ formatDate(app.appointment_date) }}</td>
@@ -417,6 +399,33 @@ const formatTime = (datetime) => {
   &:hover { 
     background: rgba(67, 56, 202, 0.05); 
   }
+}
+
+/* Skeleton Loader */
+.skeleton-row {
+  animation: pulse-skeleton 1.5s infinite;
+  
+  .skeleton-line {
+    height: 12px;
+    background: #e5e7eb;
+    border-radius: 4px;
+    width: 120px;
+    
+    &.short { width: 60px; }
+  }
+  
+  .skeleton-action {
+    height: 24px;
+    width: 24px;
+    background: #e5e7eb;
+    border-radius: 4px;
+  }
+}
+
+@keyframes pulse-skeleton {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
 }
 
 .icon-sm { width: 16px; height: 16px; }

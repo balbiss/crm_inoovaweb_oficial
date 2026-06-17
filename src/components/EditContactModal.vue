@@ -144,6 +144,29 @@
           </div>
 
           <div class="form-section">
+            <h3>Atributos Personalizados</h3>
+            <p style="font-size: 0.85rem; color: #6b7280; margin-bottom: 12px; margin-top: -10px;">
+              Crie campos adicionais livremente (ex: Cor do carro, Hobby, Renda do cônjuge).
+            </p>
+            <div v-for="(attr, index) in formData.customAttributesArray" :key="index" class="form-row" style="margin-bottom: 10px; align-items: flex-end;">
+              <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label v-if="index === 0">Nome do Campo</label>
+                <input type="text" v-model="attr.key" placeholder="Ex: Possui Pets?" autocomplete="off" />
+              </div>
+              <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label v-if="index === 0">Valor</label>
+                <input type="text" v-model="attr.value" placeholder="Ex: Sim, 2 cachorros" autocomplete="off" />
+              </div>
+              <button type="button" @click="formData.customAttributesArray.splice(index, 1)" class="btn-cancel" style="padding: 10px; height: 38px; border-color: #ef4444; color: #ef4444; display: flex; align-items: center; justify-content: center;" title="Remover">
+                Remover
+              </button>
+            </div>
+            <button type="button" @click="formData.customAttributesArray.push({key: '', value: ''})" style="background: none; border: none; color: #3b82f6; cursor: pointer; font-weight: 500; font-size: 0.9rem; padding: 0; margin-top: 5px;">
+              + Adicionar novo atributo
+            </button>
+          </div>
+
+          <div class="form-section">
             <h3>Endereço Completo</h3>
             
             <div class="form-group">
@@ -242,7 +265,8 @@ const formData = ref({
   neighborhood: '',
   state: '',
   address_number: '',
-  address_complement: ''
+  address_complement: '',
+  customAttributesArray: []
 })
 const loading = ref(false)
 const loadingCep = ref(false)
@@ -304,7 +328,8 @@ watch(() => props.contact, (newContact) => {
       neighborhood: newContact.neighborhood || '',
       state: newContact.state || '',
       address_number: newContact.address_number || '',
-      address_complement: newContact.address_complement || ''
+      address_complement: newContact.address_complement || '',
+      customAttributesArray: newContact.custom_attributes ? Object.keys(newContact.custom_attributes).map(k => ({ key: k, value: newContact.custom_attributes[k] })) : []
     }
   }
 }, { immediate: true })
@@ -326,6 +351,15 @@ const save = async () => {
   delete dataToSave.has_down_payment
   delete dataToSave.has_fgts
   delete dataToSave.has_dependents
+
+  const custom_attributes = {}
+  dataToSave.customAttributesArray.forEach(attr => {
+    if (attr.key && attr.key.trim()) {
+      custom_attributes[attr.key.trim()] = attr.value
+    }
+  })
+  dataToSave.custom_attributes = custom_attributes
+  delete dataToSave.customAttributesArray
 
   try {
     await store.updateContact(props.contact.id, dataToSave)
@@ -658,7 +692,7 @@ const save = async () => {
 }
 
 .btn-primary {
-  background: #1f2937;
+  background: var(--primary, #3b82f6);
   color: white;
   border: none;
   padding: 8px 16px;
@@ -669,7 +703,7 @@ const save = async () => {
 }
 
 .btn-primary:hover {
-  background: #374151;
+  background: var(--primary-dark, #2563eb);
 }
 
 .btn-primary:disabled {
