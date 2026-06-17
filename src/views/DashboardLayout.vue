@@ -467,13 +467,6 @@ const handleLogout = () => {
             <a href="#" class="nav-item sub-item"><Users class="icon-sm" /> Times</a>
             <router-link to="/settings/inboxes" class="nav-item sub-item"><Inbox class="icon-sm" /> Caixas de Entrada</router-link>
             <router-link to="/settings/tags" class="nav-item sub-item" active-class="active"><Tag class="icon-sm" /> Etiquetas</router-link>
-            <a href="#" class="nav-item sub-item"><Code class="icon-sm" /> Atributos Personalizados</a>
-            <a href="#" class="nav-item sub-item"><RefreshCw class="icon-sm" /> Automação</a>
-            <a href="#" class="nav-item sub-item"><Bot class="icon-sm" /> Robôs</a>
-            <a href="#" class="nav-item sub-item"><Calendar class="icon-sm" /> Macros</a>
-            <a href="#" class="nav-item sub-item"><MessageSquareQuote class="icon-sm" /> Respostas Prontas</a>
-            <a href="#" class="nav-item sub-item"><Blocks class="icon-sm" /> Integrações</a>
-            <a href="#" class="nav-item sub-item"><Workflow class="icon-sm" /> Fluxo de Conversa</a>
           </div>
         </div>
       </nav>
