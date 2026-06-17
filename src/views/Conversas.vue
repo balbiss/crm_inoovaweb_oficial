@@ -161,8 +161,8 @@ const closeFilterPopover = () => {
   isSortPopoverOpen.value = false
 }
 
-onMounted(() => {
-  store.fetchConversations()
+onMounted(async () => {
+  await store.fetchConversations()
   if (route.params.inboxId) {
     store.setSidebarInboxId(route.params.inboxId)
   } else {
@@ -173,6 +173,11 @@ onMounted(() => {
   document.addEventListener('click', closeFilterPopover)
   store.setupWebSocket()
   scrollToBottom()
+  if (store.activeConversationId) {
+    fetchAiStatus()
+    clearInterval(aiStatusInterval.value)
+    aiStatusInterval.value = setInterval(fetchAiStatus, 15000)
+  }
 })
 
 onUnmounted(() => {
@@ -277,7 +282,7 @@ watch(() => store.activeConversationId, (newId) => {
     fetchAiStatus()
     aiStatusInterval.value = setInterval(fetchAiStatus, 15000)
   }
-})
+}, { immediate: true })
 
 onUnmounted(() => {
   clearInterval(aiStatusInterval.value)
