@@ -465,9 +465,12 @@ onUnmounted(() => {
               <span v-if="conv.unread > 0" class="unread-badge"></span>
               <span>{{ conv.preview }}</span>
             </div>
-            <div v-if="conv.tags && conv.tags.length > 0" class="conv-tags">
+            <div class="conv-tags" v-if="(conv.tags && conv.tags.length > 0) || conv.assignee">
               <span v-for="tag in conv.tags" :key="tag.id" class="conv-tag" :style="{ background: tag.color, color: '#fff' }">
                 {{ tag.name }}
+              </span>
+              <span v-if="conv.assignee" class="conv-tag conv-tag-agent" :title="'Atendente: ' + conv.assignee">
+                👤 {{ conv.assignee }}
               </span>
             </div>
           </div>
@@ -1001,6 +1004,15 @@ onUnmounted(() => {
     white-space: nowrap;
     letter-spacing: 0.01em;
     text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  }
+
+  .conv-tag-agent {
+    background: #1e293b !important;
+    color: #e2e8f0 !important;
+    text-shadow: none !important;
+    font-weight: 600;
+    letter-spacing: 0;
+    border: 1px solid rgba(255,255,255,0.08);
   }
 
   .conv-preview {
