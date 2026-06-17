@@ -504,7 +504,13 @@ onUnmounted(() => {
             :conversation-id="store.activeConversation.id"
             :current-status="store.activeConversation.status"
           />
-          <ConversationMoreOptionsDropdown />
+          <ConversationMoreOptionsDropdown
+            :conversation-id="store.activeConversation.id"
+            :contact-id="store.activeConversation.contact?.id"
+            :contact-status="store.activeConversation.contact?.status"
+            @contact-blocked="store.activeConversation.contact.status = 'blocked'"
+            @contact-unblocked="store.activeConversation.contact.status = 'active'"
+          />
         </div>
       </div>
 
