@@ -1007,12 +1007,12 @@ onUnmounted(() => {
   }
 
   .conv-tag-agent {
-    background: #1e293b !important;
-    color: #e2e8f0 !important;
-    text-shadow: none !important;
-    font-weight: 600;
-    letter-spacing: 0;
-    border: 1px solid rgba(255,255,255,0.08);
+    background: linear-gradient(135deg, #4f46e5, #7c3aed) !important;
+    color: #fff !important;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3) !important;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    box-shadow: 0 2px 6px rgba(79,70,229,0.4);
   }
 
   .conv-preview {
