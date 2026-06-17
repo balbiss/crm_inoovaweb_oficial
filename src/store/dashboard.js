@@ -15,6 +15,7 @@ export const useDashboardStore = defineStore('dashboard', {
         backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899']
       }]
     },
+    isOwner: false,
     isLoading: false,
     isLoadedOnce: false
   }),
@@ -28,6 +29,7 @@ export const useDashboardStore = defineStore('dashboard', {
       try {
         const response = await api.get('/dashboard')
         this.kpis = response.data.kpis
+        this.isOwner = response.data.is_owner
         
         const sourceData = response.data.leads_by_source
         const labels = Object.keys(sourceData)

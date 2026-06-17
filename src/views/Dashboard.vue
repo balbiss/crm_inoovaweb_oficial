@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Filter, Users, Flame, ThermometerSun, Snowflake, ArrowUpRight, BarChart2 } from '@lucide/vue'
 import api from '../api'
 import { Pie } from 'vue-chartjs'
@@ -10,7 +10,14 @@ import { storeToRefs } from 'pinia'
 ChartJS.register(Title, Tooltip, Legend, ArcElement, CategoryScale)
 
 const dashboardStore = useDashboardStore()
-const { kpis, leadsBySourceData, isLoading } = storeToRefs(dashboardStore)
+const { kpis, leadsBySourceData, isLoading, isOwner } = storeToRefs(dashboardStore)
+
+const dashTitle = computed(() => isOwner.value ? 'Dashboard Imobiliário' : 'Meu Painel')
+const dashSubtitle = computed(() => isOwner.value
+  ? 'Visão geral da sua carteira de clientes e termômetro de leads.'
+  : 'Visão dos seus leads e atendimentos atribuídos a você.'
+)
+const hierarchyLabel = computed(() => isOwner.value ? 'IMOBILIÁRIA' : 'MEU PAINEL')
 
 const fetchDashboard = () => {
   dashboardStore.fetchDashboard()
@@ -36,14 +43,14 @@ const chartOptions = {
   <div class="dashboard-container">
     <div class="dashboard-header">
       <div>
-        <h1 class="page-title">Dashboard Imobiliário</h1>
-        <p class="page-subtitle">Visão geral da sua carteira de clientes e termômetro de leads.</p>
+        <h1 class="page-title">{{ dashTitle }}</h1>
+        <p class="page-subtitle">{{ dashSubtitle }}</p>
       </div>
       
       <div class="header-filters">
         <div class="filter-badge">
-          <span class="filter-label">Hierarquia:</span>
-          <span class="filter-value">IMOBILIÁRIA</span>
+          <span class="filter-label">Visão:</span>
+          <span class="filter-value">{{ hierarchyLabel }}</span>
         </div>
         <div class="filter-badge">
           <span class="filter-label">Pretensão:</span>
