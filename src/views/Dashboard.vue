@@ -1,447 +1,477 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
-import { Filter, Users, Flame, ThermometerSun, Snowflake, ArrowUpRight, BarChart2 } from '@lucide/vue'
-import api from '../api'
-import { Pie } from 'vue-chartjs'
+import { onMounted, computed } from 'vue'
+import { useRouter } from 'vue-router'
+import {
+  Users, Flame, ThermometerSun, Snowflake, Calendar, CalendarCheck,
+  CalendarDays, MessageCircle, UserCheck, TrendingUp, BarChart2,
+  CheckCircle, Clock, ChevronRight, Handshake, Eye
+} from 'lucide-vue-next'
+import { Doughnut } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, ArcElement, CategoryScale } from 'chart.js'
 import { useDashboardStore } from '../store/dashboard'
 import { storeToRefs } from 'pinia'
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement, CategoryScale)
 
-const dashboardStore = useDashboardStore()
-const { kpis, leadsBySourceData, isLoading, isOwner } = storeToRefs(dashboardStore)
+const router = useRouter()
+const store = useDashboardStore()
+const { kpis, leadsBySourceData, isLoading, isOwner } = storeToRefs(store)
 
-const dashTitle = computed(() => isOwner.value ? 'Dashboard Imobiliário' : 'Meu Painel')
+onMounted(() => store.fetchDashboard())
+
+const dashTitle    = computed(() => isOwner.value ? 'Dashboard Imobiliário' : 'Meu Painel')
 const dashSubtitle = computed(() => isOwner.value
-  ? 'Visão geral da sua carteira de clientes e termômetro de leads.'
-  : 'Visão dos seus leads e atendimentos atribuídos a você.'
-)
-const hierarchyLabel = computed(() => isOwner.value ? 'IMOBILIÁRIA' : 'MEU PAINEL')
-
-const fetchDashboard = () => {
-  dashboardStore.fetchDashboard()
-}
-
-onMounted(() => {
-  fetchDashboard()
-})
+  ? 'Visão estratégica da sua imobiliária em tempo real.'
+  : 'Seus leads e atendimentos atribuídos a você.')
 
 const chartOptions = {
   responsive: true,
   maintainAspectRatio: false,
+  cutout: '72%',
   plugins: {
-    legend: {
-      position: 'right',
-      labels: { font: { family: "'Inter', sans-serif", size: 13 } }
-    }
+    legend: { position: 'bottom', labels: { font: { family: "'Inter', sans-serif", size: 12 }, padding: 16, usePointStyle: true } }
   }
 }
+
+const funnelTotal = computed(() => {
+  const k = kpis.value?.kanban
+  if (!k) return 1
+  return (k.lead + k.visit + k.proposal + k.won) || 1
+})
+
+const funnelItems = computed(() => {
+  const k = kpis.value?.kanban || {}
+  return [
+    { label: 'Novos Leads',      value: k.lead     || 0, color: '#6366f1', icon: Users },
+    { label: 'Em Atendimento',   value: k.visit    || 0, color: '#f59e0b', icon: Eye },
+    { label: 'Proposta Feita',   value: k.proposal || 0, color: '#3b82f6', icon: Handshake },
+    { label: 'Negócio Fechado',  value: k.won      || 0, color: '#10b981', icon: CheckCircle }
+  ]
+})
 </script>
 
 <template>
-  <div class="dashboard-container">
-    <div class="dashboard-header">
+  <div class="db">
+    <!-- Header -->
+    <div class="db-header">
       <div>
-        <h1 class="page-title">{{ dashTitle }}</h1>
-        <p class="page-subtitle">{{ dashSubtitle }}</p>
+        <h1>{{ dashTitle }}</h1>
+        <p>{{ dashSubtitle }}</p>
       </div>
-      
-      <div class="header-filters">
-        <div class="filter-badge">
-          <span class="filter-label">Visão:</span>
-          <span class="filter-value">{{ hierarchyLabel }}</span>
-        </div>
-        <div class="filter-badge">
-          <span class="filter-label">Pretensão:</span>
-          <span class="filter-value">VENDA</span>
+      <div class="header-actions">
+        <button class="btn-outline" @click="store.fetchDashboard()">
+          <TrendingUp class="ic" /> Atualizar
+        </button>
+      </div>
+    </div>
+
+    <!-- Skeleton -->
+    <div v-if="isLoading" class="skeleton-wrap">
+      <div class="skel-row">
+        <div class="skel-card" v-for="i in 4" :key="i"></div>
+      </div>
+      <div class="skel-row mt">
+        <div class="skel-wide"></div>
+        <div class="skel-half-col">
+          <div class="skel-sm" v-for="i in 3" :key="i"></div>
         </div>
       </div>
     </div>
 
-    <div v-if="isLoading" class="skeleton-dashboard">
-      <div class="skeleton-kpi-grid">
-        <div class="skeleton-kpi-card" v-for="i in 4" :key="i">
-          <div class="skeleton-kpi-icon"></div>
-          <div class="skeleton-kpi-content">
-            <div class="skeleton-line title"></div>
-            <div class="skeleton-line value"></div>
-          </div>
-        </div>
-      </div>
-      <div class="skeleton-charts-grid">
-        <div class="skeleton-chart-card"></div>
-        <div class="skeleton-chart-card"></div>
-      </div>
-    </div>
-
-    <div v-else>
-      <!-- Real Estate KPIs -->
-      <div class="kpi-grid">
-        <div class="kpi-card card-total">
-          <div class="card-glow blue-glow"></div>
-          <div class="kpi-icon-wrapper blue">
-            <Users class="icon-md" />
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ kpis.active_customers }}</span>
-            <span class="kpi-title">Carteira de Clientes Ativos</span>
-          </div>
-        </div>
-
-        <div class="kpi-card card-hot">
-          <div class="card-glow red-glow"></div>
-          <div class="kpi-icon-wrapper red">
-            <Flame class="icon-md" />
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ kpis.temperature.quente }}</span>
-            <span class="kpi-title">Leads Quentes</span>
-          </div>
-        </div>
-
-        <div class="kpi-card card-warm">
-          <div class="card-glow orange-glow"></div>
-          <div class="kpi-icon-wrapper orange">
-            <ThermometerSun class="icon-md" />
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ kpis.temperature.morno }}</span>
-            <span class="kpi-title">Leads Mornos</span>
-          </div>
-        </div>
-
-        <div class="kpi-card card-cold">
-          <div class="card-glow teal-glow"></div>
-          <div class="kpi-icon-wrapper blue-light">
-            <Snowflake class="icon-md" />
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ kpis.temperature.frio }}</span>
-            <span class="kpi-title">Leads Frios</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Charts Area -->
-      <div class="charts-grid">
-        <div class="chart-card">
-          <div class="chart-header">
+    <template v-else>
+      <!-- Row 1: Temperatura dos Leads -->
+      <div class="section-label">Termômetro de Leads</div>
+      <div class="grid-4">
+        <div class="kpi-card accent-blue">
+          <div class="kpi-left">
+            <div class="kpi-icon blue"><Users /></div>
             <div>
-              <h3 class="chart-title"><BarChart2 class="icon-sm text-primary" /> Leads por Mídia de Origem</h3>
-              <p class="chart-subtitle">Distribuição dos canais de aquisição de leads</p>
+              <div class="kpi-val">{{ kpis.total_contacts }}</div>
+              <div class="kpi-lbl">Total de Contatos</div>
             </div>
           </div>
-          <div class="chart-body">
-            <div class="pie-chart-wrapper">
-              <Pie :data="leadsBySourceData" :options="chartOptions" />
-            </div>
+          <div class="kpi-bar-mini">
+            <span class="dot red"></span><span class="mini-n">{{ kpis.temperature.quente }}</span>
+            <span class="dot amber"></span><span class="mini-n">{{ kpis.temperature.morno }}</span>
+            <span class="dot teal"></span><span class="mini-n">{{ kpis.temperature.frio }}</span>
           </div>
         </div>
 
-        <div class="chart-card intention-card">
-          <div class="chart-header">
+        <div class="kpi-card accent-red">
+          <div class="kpi-left">
+            <div class="kpi-icon red"><Flame /></div>
             <div>
-              <h3 class="chart-title">Intenções de Negócio</h3>
-              <p class="chart-subtitle">Resumo de demandas ativas</p>
+              <div class="kpi-val">{{ kpis.temperature.quente }}</div>
+              <div class="kpi-lbl">Leads Quentes</div>
             </div>
           </div>
-          <div class="chart-body intention-body">
-            <div class="intention-stat primary">
-              <div class="stat-number">{{ kpis.pretensao_venda }}</div>
-              <div class="stat-label">Buscando <strong>Venda</strong></div>
+          <div class="kpi-badge hot">Alta prioridade</div>
+        </div>
+
+        <div class="kpi-card accent-amber">
+          <div class="kpi-left">
+            <div class="kpi-icon amber"><ThermometerSun /></div>
+            <div>
+              <div class="kpi-val">{{ kpis.temperature.morno }}</div>
+              <div class="kpi-lbl">Leads Mornos</div>
             </div>
           </div>
+          <div class="kpi-badge warm">Nutrir</div>
+        </div>
+
+        <div class="kpi-card accent-teal">
+          <div class="kpi-left">
+            <div class="kpi-icon teal"><Snowflake /></div>
+            <div>
+              <div class="kpi-val">{{ kpis.temperature.frio }}</div>
+              <div class="kpi-lbl">Leads Frios</div>
+            </div>
+          </div>
+          <div class="kpi-badge cold">Reconquistar</div>
         </div>
       </div>
-    </div>
+
+      <!-- Row 2: Conversas + Agendamentos -->
+      <div class="section-label mt-section">Atendimento & Agenda</div>
+      <div class="grid-4">
+        <div class="kpi-card accent-purple">
+          <div class="kpi-left">
+            <div class="kpi-icon purple"><MessageCircle /></div>
+            <div>
+              <div class="kpi-val">{{ kpis.conversations.open }}</div>
+              <div class="kpi-lbl">Conversas Abertas</div>
+            </div>
+          </div>
+          <div class="kpi-sub">{{ kpis.conversations.today }} novas hoje</div>
+        </div>
+
+        <div class="kpi-card accent-violet">
+          <div class="kpi-left">
+            <div class="kpi-icon violet"><UserCheck /></div>
+            <div>
+              <div class="kpi-val">{{ kpis.conversations.with_human }}</div>
+              <div class="kpi-lbl">Com Atendente Humano</div>
+            </div>
+          </div>
+          <div class="kpi-badge human">Em andamento</div>
+        </div>
+
+        <div class="kpi-card accent-green">
+          <div class="kpi-left">
+            <div class="kpi-icon green"><CalendarDays /></div>
+            <div>
+              <div class="kpi-val">{{ kpis.appointments.upcoming }}</div>
+              <div class="kpi-lbl">Visitas Agendadas</div>
+            </div>
+          </div>
+          <div class="kpi-sub">{{ kpis.appointments.today }} hoje</div>
+        </div>
+
+        <div class="kpi-card accent-indigo">
+          <div class="kpi-left">
+            <div class="kpi-icon indigo"><CalendarCheck /></div>
+            <div>
+              <div class="kpi-val">{{ kpis.appointments.done }}</div>
+              <div class="kpi-lbl">Visitas Realizadas</div>
+            </div>
+          </div>
+          <div class="kpi-badge done">Concluídas</div>
+        </div>
+      </div>
+
+      <!-- Row 3: Funil + Gráfico -->
+      <div class="section-label mt-section">Funil de Vendas & Origem dos Leads</div>
+      <div class="grid-2-3">
+
+        <!-- Funil -->
+        <div class="panel">
+          <div class="panel-head">
+            <BarChart2 class="ic" /> Funil de Vendas
+          </div>
+          <div class="funnel-list">
+            <div v-for="item in funnelItems" :key="item.label" class="funnel-item">
+              <div class="funnel-meta">
+                <component :is="item.icon" class="funnel-ic" :style="{ color: item.color }" />
+                <span class="funnel-label">{{ item.label }}</span>
+                <span class="funnel-val" :style="{ color: item.color }">{{ item.value }}</span>
+              </div>
+              <div class="funnel-track">
+                <div class="funnel-fill" :style="{
+                  width: Math.max((item.value / funnelTotal) * 100, item.value > 0 ? 4 : 0) + '%',
+                  background: item.color
+                }"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="funnel-footer">
+            <button class="btn-link" @click="router.push('/funil')">
+              Ver funil completo <ChevronRight class="ic-xs" />
+            </button>
+          </div>
+        </div>
+
+        <!-- Doughnut Origem -->
+        <div class="panel">
+          <div class="panel-head">
+            <TrendingUp class="ic" /> Leads por Origem
+          </div>
+          <div class="chart-wrap" v-if="leadsBySourceData.labels[0] !== 'Sem dados'">
+            <Doughnut :data="leadsBySourceData" :options="chartOptions" />
+          </div>
+          <div class="no-data" v-else>
+            <BarChart2 class="no-data-ic" />
+            <p>Nenhuma origem cadastrada ainda</p>
+          </div>
+        </div>
+
+      </div>
+    </template>
   </div>
 </template>
 
 <style lang="scss" scoped>
-.dashboard-container {
-  padding: 2rem 3rem;
-  background-color: #f8f9fa;
+.db {
+  padding: 2rem 2.5rem;
+  background: var(--bg-primary, #f8f9fb);
   min-height: 100%;
+  font-family: 'Inter', sans-serif;
 }
 
-.dashboard-header {
+/* Header */
+.db-header {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 
-  .page-title {
-    font-size: 1.5rem;
+  h1 {
+    font-size: 1.45rem;
     font-weight: 700;
-    color: #1f2937;
-    margin: 0 0 0.25rem 0;
+    color: var(--text-main, #0f172a);
+    margin: 0 0 0.2rem;
   }
-
-  .page-subtitle {
-    font-size: 0.9rem;
-    color: #6b7280;
-    margin: 0;
-  }
+  p { font-size: 0.875rem; color: var(--text-muted, #64748b); margin: 0; }
 }
 
-.header-filters {
-  display: flex;
-  gap: 1rem;
-
-  .filter-badge {
-    background: #ffffff;
-    border: 1px solid #e5e7eb;
-    padding: 0.5rem 1rem;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-
-    .filter-label {
-      font-size: 0.8rem;
-      color: #6b7280;
-    }
-
-    .filter-value {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #1f2937;
-    }
-  }
+.btn-outline {
+  display: inline-flex; align-items: center; gap: 0.4rem;
+  border: 1px solid var(--border-color, #e2e8f0);
+  background: var(--bg-secondary, #fff);
+  color: var(--text-main, #334155);
+  padding: 0.45rem 1rem; border-radius: 8px;
+  font-size: 0.82rem; font-weight: 500; cursor: pointer;
+  transition: all 0.15s;
+  &:hover { background: var(--bg-primary, #f1f5f9); }
+  .ic { width: 14px; height: 14px; }
 }
 
-.kpi-grid {
+/* Labels de seção */
+.section-label {
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--text-muted, #94a3b8);
+  margin-bottom: 0.75rem;
+  &.mt-section { margin-top: 1.75rem; }
+}
+.mt-section { margin-top: 1.75rem; }
+
+/* Grids */
+.grid-4 {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1.5rem;
-  margin-bottom: 2rem;
+  gap: 1rem;
 }
 
-.kpi-card {
-  position: relative;
-  background: white;
-  border-radius: 12px;
-  padding: 1.25rem 1.5rem;
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(255,255,255,0.8);
-  overflow: hidden;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
-
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
-  }
-
-  .card-glow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 3px;
-    
-    &.blue-glow { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
-    &.red-glow { background: linear-gradient(90deg, #ef4444, #f87171); }
-    &.orange-glow { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
-    &.teal-glow { background: linear-gradient(90deg, #0d9488, #2dd4bf); }
-  }
-
-  .kpi-icon-wrapper {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05);
-    flex-shrink: 0;
-
-    &.blue { background: linear-gradient(135deg, #eff6ff, #dbeafe); color: #2563eb; }
-    &.red { background: linear-gradient(135deg, #fef2f2, #fee2e2); color: #dc2626; }
-    &.orange { background: linear-gradient(135deg, #fffbeb, #fef3c7); color: #d97706; }
-    &.blue-light { background: linear-gradient(135deg, #f0fdfa, #ccfbf1); color: #0f766e; }
-  }
-
-  .kpi-content {
-    display: flex;
-    flex-direction: column;
-
-    .kpi-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: #6b7280;
-      text-transform: uppercase;
-      letter-spacing: 0.03em;
-      margin-top: 0.25rem;
-    }
-
-    .kpi-value {
-      font-size: 1.75rem;
-      font-weight: 800;
-      color: #111827;
-      line-height: 1;
-      letter-spacing: -0.02em;
-    }
-  }
-}
-
-.charts-grid {
+.grid-2-3 {
   display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 1.5rem;
+  grid-template-columns: 1fr 1.2fr;
+  gap: 1rem;
 }
 
-.chart-card {
-  background: white;
-  border-radius: 16px;
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-  border: 1px solid rgba(255,255,255,0.8);
+/* KPI Card */
+.kpi-card {
+  background: var(--bg-secondary, #fff);
+  border-radius: 14px;
+  padding: 1.1rem 1.2rem;
+  border: 1px solid var(--border-color, #e8edf2);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-
-  .chart-header {
-    padding: 1.5rem 1.75rem;
-    border-bottom: 1px solid #f3f4f6;
-    background: rgba(249, 250, 251, 0.5);
-
-    .chart-title {
-      font-size: 1.1rem;
-      font-weight: 700;
-      color: #111827;
-      margin: 0 0 0.25rem 0;
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-    }
-    
-    .chart-subtitle {
-      font-size: 0.85rem;
-      color: #6b7280;
-      margin: 0;
-    }
-    
-    .text-primary { color: #3b82f6; }
-  }
-
-  .chart-body {
-    padding: 1.5rem;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 350px;
-  }
-}
-
-.pie-chart-wrapper {
+  gap: 0.75rem;
   position: relative;
-  height: 280px;
-  width: 100%;
-}
+  overflow: hidden;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 
-.intention-body {
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
-  padding: 2.5rem !important;
+  &:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.08); }
 
-  .intention-stat {
-    text-align: center;
-    
-    &.primary .stat-number { color: #2563eb; }
-    
-    .stat-number {
-      font-size: 2.5rem;
-      font-weight: 900;
-      line-height: 1;
-      margin-bottom: 0.5rem;
-      letter-spacing: -0.02em;
-    }
-
-    .stat-label {
-      font-size: 0.95rem;
-      color: #6b7280;
-      strong { color: #1f2937; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
-    }
+  &::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0; height: 3px;
   }
+  &.accent-blue::before   { background: linear-gradient(90deg, #3b82f6, #60a5fa); }
+  &.accent-red::before    { background: linear-gradient(90deg, #ef4444, #f87171); }
+  &.accent-amber::before  { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  &.accent-teal::before   { background: linear-gradient(90deg, #0d9488, #2dd4bf); }
+  &.accent-purple::before { background: linear-gradient(90deg, #7c3aed, #a78bfa); }
+  &.accent-violet::before { background: linear-gradient(90deg, #8b5cf6, #c4b5fd); }
+  &.accent-green::before  { background: linear-gradient(90deg, #10b981, #34d399); }
+  &.accent-indigo::before { background: linear-gradient(90deg, #4338ca, #818cf8); }
 }
 
-.icon-md {
-  width: 24px;
-  height: 24px;
+.kpi-left {
+  display: flex; align-items: center; gap: 0.9rem;
 }
 
-.icon-sm {
-  width: 18px;
-  height: 18px;
+.kpi-icon {
+  width: 40px; height: 40px; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  svg { width: 20px; height: 20px; }
+
+  &.blue   { background: #eff6ff; color: #2563eb; }
+  &.red    { background: #fef2f2; color: #dc2626; }
+  &.amber  { background: #fffbeb; color: #d97706; }
+  &.teal   { background: #f0fdfa; color: #0f766e; }
+  &.purple { background: #f5f3ff; color: #7c3aed; }
+  &.violet { background: #f5f3ff; color: #7c3aed; }
+  &.green  { background: #ecfdf5; color: #059669; }
+  &.indigo { background: #eef2ff; color: #4338ca; }
 }
 
-/* Skeleton Loader */
-.skeleton-dashboard {
-  display: flex;
-  flex-direction: column;
-  gap: 2rem;
-  
-  .skeleton-kpi-grid {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 1.5rem;
+.kpi-val {
+  font-size: 1.8rem; font-weight: 800;
+  color: var(--text-main, #0f172a); line-height: 1; letter-spacing: -0.02em;
+}
+
+.kpi-lbl {
+  font-size: 0.72rem; font-weight: 600; color: var(--text-muted, #64748b);
+  text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.2rem;
+}
+
+.kpi-sub {
+  font-size: 0.75rem; color: var(--text-muted, #94a3b8);
+}
+
+.kpi-bar-mini {
+  display: flex; align-items: center; gap: 0.3rem; font-size: 0.75rem;
+  color: var(--text-muted, #94a3b8);
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    &.red   { background: #ef4444; }
+    &.amber { background: #f59e0b; }
+    &.teal  { background: #0d9488; }
   }
-  
-  .skeleton-kpi-card {
-    background: white;
-    border-radius: 12px;
-    padding: 1.5rem;
-    display: flex;
-    align-items: center;
-    gap: 1.25rem;
-    animation: pulse-skeleton 1.5s infinite;
-    
-    .skeleton-kpi-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: 12px;
-      background: #e5e7eb;
-    }
-    
-    .skeleton-kpi-content {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-      flex: 1;
-      
-      .skeleton-line {
-        background: #e5e7eb;
-        border-radius: 4px;
-        &.title { width: 80%; height: 12px; }
-        &.value { width: 50%; height: 28px; }
-      }
-    }
-  }
-  
-  .skeleton-charts-grid {
-    display: grid;
-    grid-template-columns: 2fr 1fr;
-    gap: 1.5rem;
-    
-    .skeleton-chart-card {
-      background: white;
-      border-radius: 12px;
-      height: 350px;
-      animation: pulse-skeleton 1.5s infinite;
-    }
-  }
+  .mini-n { min-width: 1rem; font-weight: 600; color: var(--text-main, #334155); }
 }
 
-@keyframes pulse-skeleton {
-  0% { opacity: 0.6; }
+.kpi-badge {
+  display: inline-flex; align-items: center;
+  padding: 0.2rem 0.6rem; border-radius: 20px;
+  font-size: 0.68rem; font-weight: 700; width: fit-content;
+
+  &.hot   { background: #fef2f2; color: #dc2626; }
+  &.warm  { background: #fffbeb; color: #d97706; }
+  &.cold  { background: #f0fdfa; color: #0f766e; }
+  &.human { background: #f5f3ff; color: #7c3aed; }
+  &.done  { background: #ecfdf5; color: #059669; }
+}
+
+/* Panels */
+.panel {
+  background: var(--bg-secondary, #fff);
+  border-radius: 14px;
+  border: 1px solid var(--border-color, #e8edf2);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  overflow: hidden;
+  display: flex; flex-direction: column;
+}
+
+.panel-head {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 1rem 1.25rem; border-bottom: 1px solid var(--border-color, #f1f5f9);
+  font-size: 0.88rem; font-weight: 600; color: var(--text-main, #1e293b);
+  background: var(--bg-primary, #fafafa);
+  .ic { width: 16px; height: 16px; color: #6366f1; }
+}
+
+/* Funil */
+.funnel-list {
+  padding: 1rem 1.25rem;
+  display: flex; flex-direction: column; gap: 1rem;
+  flex: 1;
+}
+
+.funnel-item { display: flex; flex-direction: column; gap: 0.4rem; }
+
+.funnel-meta {
+  display: flex; align-items: center; gap: 0.5rem;
+  .funnel-ic { width: 15px; height: 15px; flex-shrink: 0; }
+  .funnel-label { flex: 1; font-size: 0.82rem; color: var(--text-muted, #64748b); font-weight: 500; }
+  .funnel-val { font-size: 0.9rem; font-weight: 700; }
+}
+
+.funnel-track {
+  height: 6px; background: var(--border-color, #f1f5f9); border-radius: 3px; overflow: hidden;
+}
+
+.funnel-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+
+.funnel-footer {
+  padding: 0.75rem 1.25rem;
+  border-top: 1px solid var(--border-color, #f1f5f9);
+}
+
+.btn-link {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  background: none; border: none; cursor: pointer;
+  font-size: 0.78rem; font-weight: 600; color: #6366f1;
+  padding: 0; transition: gap 0.15s;
+  &:hover { gap: 0.5rem; }
+  .ic-xs { width: 13px; height: 13px; }
+}
+
+/* Donut chart */
+.chart-wrap {
+  padding: 1.25rem;
+  height: 260px;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.no-data {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 0.5rem;
+  color: var(--text-muted, #94a3b8); padding: 2rem;
+  .no-data-ic { width: 40px; height: 40px; opacity: 0.3; }
+  p { font-size: 0.82rem; margin: 0; }
+}
+
+/* Skeleton */
+.skeleton-wrap { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.skel-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+  animation: pulse 1.4s infinite;
+  &.mt { grid-template-columns: 1fr 1fr; }
+}
+
+.skel-card {
+  height: 100px; background: var(--bg-secondary, #e5e7eb);
+  border-radius: 14px;
+}
+.skel-wide { height: 240px; background: var(--bg-secondary, #e5e7eb); border-radius: 14px; }
+.skel-half-col { display: flex; flex-direction: column; gap: 0.75rem; }
+.skel-sm { height: 70px; background: var(--bg-secondary, #e5e7eb); border-radius: 14px; }
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
   50% { opacity: 1; }
-  100% { opacity: 0.6; }
+}
+
+/* Responsive */
+@media (max-width: 1100px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-2-3 { grid-template-columns: 1fr; }
 }
 </style>
