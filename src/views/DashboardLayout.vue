@@ -462,7 +462,7 @@ const handleLogout = () => {
           </div>
           <div class="settings-menu" v-show="isSettingsOpen">
             <router-link to="/settings/account" class="nav-item sub-item" active-class="active"><Briefcase class="icon-sm" /> Conta</router-link>
-            <router-link to="/suporte" class="nav-item support-item"><HelpCircle class="icon-sm" /> Central de Suporte</router-link>
+            <router-link to="/suporte" class="nav-item sub-item"><HelpCircle class="icon-sm" /> Central de Suporte</router-link>
             <a href="#" class="nav-item sub-item"><Users class="icon-sm" /> Times</a>
             <router-link to="/settings/inboxes" class="nav-item sub-item"><Inbox class="icon-sm" /> Caixas de Entrada</router-link>
             <router-link to="/settings/tags" class="nav-item sub-item" active-class="active"><Tag class="icon-sm" /> Etiquetas</router-link>
