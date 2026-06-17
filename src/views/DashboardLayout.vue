@@ -256,8 +256,10 @@ onMounted(() => {
   const savedTheme = localStorage.getItem('theme') || 'system'
   applyTheme(savedTheme)
   
-  fetchNotifications()
-  notificationInterval = setInterval(fetchNotifications, 10000) // Verifica a cada 10 segundos
+  if (isAdminOrEmpresa.value) {
+    fetchNotifications()
+    notificationInterval = setInterval(fetchNotifications, 10000)
+  }
 
   fetchTags()
   window.addEventListener('tags-updated', fetchTags)
@@ -296,7 +298,7 @@ const handleLogout = () => {
           <input type="text" placeholder="Pesquisar contatos..." />
         </div>
 
-        <div class="notifications-wrapper">
+        <div class="notifications-wrapper" v-if="isAdminOrEmpresa">
           <button class="icon-btn" @click="toggleNotifications">
             <Bell class="icon" />
             <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
