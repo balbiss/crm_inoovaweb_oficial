@@ -30,7 +30,9 @@ import {
   Minus,
   Plus,
   ArrowRight,
-  ChevronDown
+  ChevronDown,
+  BotOff,
+  Bot
 } from '@lucide/vue'
 
 import EmojiPicker from 'vue3-emoji-picker'
@@ -39,6 +41,7 @@ import 'vue3-emoji-picker/css'
 import EditContactModal from '../components/EditContactModal.vue'
 import MergeContactModal from '../components/MergeContactModal.vue'
 import DeleteContactModal from '../components/DeleteContactModal.vue'
+import api from '../api'
 
 const store = useConversationsStore()
 const route = useRoute()
@@ -233,6 +236,52 @@ const handleSendMessage = () => {
     scrollToBottom()
   }
 }
+
+// IA pause status
+const aiPauseStatus = ref({ paused: false, remaining_seconds: 0 })
+const aiStatusInterval = ref(null)
+
+const fetchAiStatus = async () => {
+  const convId = store.activeConversationId
+  if (!convId) return
+  try {
+    const res = await api.get(`/conversations/${convId}/ai_status`)
+    aiPauseStatus.value = res.data
+  } catch (e) {
+    aiPauseStatus.value = { paused: false, remaining_seconds: 0 }
+  }
+}
+
+const resumeAi = async () => {
+  const convId = store.activeConversationId
+  if (!convId) return
+  try {
+    await api.post(`/conversations/${convId}/resume_ai`)
+    aiPauseStatus.value = { paused: false, remaining_seconds: 0 }
+  } catch (e) {
+    console.error('Erro ao reativar IA:', e)
+  }
+}
+
+const formatAiRemaining = (seconds) => {
+  if (!seconds || seconds <= 0) return '0 min'
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return m > 0 ? `${m} min${s > 0 ? ` ${s}s` : ''}` : `${s}s`
+}
+
+watch(() => store.activeConversationId, (newId) => {
+  clearInterval(aiStatusInterval.value)
+  aiPauseStatus.value = { paused: false, remaining_seconds: 0 }
+  if (newId) {
+    fetchAiStatus()
+    aiStatusInterval.value = setInterval(fetchAiStatus, 15000)
+  }
+})
+
+onUnmounted(() => {
+  clearInterval(aiStatusInterval.value)
+})
 </script>
 
 <template>
@@ -384,6 +433,16 @@ const handleSendMessage = () => {
           </div>
           <p>Não há mensagens nesta conversa ainda.</p>
         </div>
+      </div>
+
+      <!-- Banner IA pausada -->
+      <div v-if="store.activeConversation && aiPauseStatus.paused" class="ai-paused-banner">
+        <BotOff class="banner-icon" />
+        <span>IA pausada — <strong>{{ formatAiRemaining(aiPauseStatus.remaining_seconds) }}</strong> para voltar automaticamente</span>
+        <button class="btn-resume-ai" @click="resumeAi">
+          <Bot class="icon-xs" />
+          Reativar agora
+        </button>
       </div>
 
       <div class="chat-input-area" v-if="store.activeConversation">
@@ -1105,6 +1164,52 @@ const handleSendMessage = () => {
     align-items: center;
     justify-content: center;
     margin: 0 auto 1rem;
+  }
+}
+
+.ai-paused-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.5rem;
+  background: #1e3a5f;
+  border-top: 1px solid #2563eb;
+  color: #93c5fd;
+  font-size: 0.82rem;
+
+  .banner-icon {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+    color: #60a5fa;
+  }
+
+  span {
+    flex: 1;
+    strong { color: #bfdbfe; }
+  }
+
+  .btn-resume-ai {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.3rem 0.75rem;
+    background: #2563eb;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+
+    &:hover { background: #1d4ed8; }
+
+    .icon-xs {
+      width: 13px;
+      height: 13px;
+    }
   }
 }
 
