@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import api from '../api'
 import { useAppointmentsStore } from '../store/appointments'
 import { storeToRefs } from 'pinia'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
@@ -78,7 +79,7 @@ const formatAddress = (prop) => {
 
 const submitForm = async () => {
   if (!form.value.contact_id || !form.value.property_id) {
-    alert("Por favor, selecione um Cliente e um Imóvel antes de salvar.")
+    Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Por favor, selecione um Cliente e um Imóvel antes de salvar.', showConfirmButton: false, timer: 4000 })
     return
   }
 
@@ -100,7 +101,7 @@ const submitForm = async () => {
     router.push('/agendamentos')
   } catch (error) {
     console.error('Erro ao salvar', error)
-    alert('Erro ao salvar agendamento.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao salvar agendamento.', showConfirmButton: false, timer: 3500 })
   } finally {
     isSubmitting.value = false
   }

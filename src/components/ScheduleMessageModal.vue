@@ -47,6 +47,7 @@ import { ref, watch } from 'vue'
 import { X, Paperclip } from '@lucide/vue'
 import api from '../api'
 import { useConversationsStore } from '../store/conversations'
+import Swal from 'sweetalert2'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -118,7 +119,7 @@ const submitForm = async () => {
     close()
   } catch (error) {
     console.error('Error scheduling message:', error)
-    alert('Erro ao agendar a mensagem. Tente novamente.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao agendar a mensagem. Tente novamente.', showConfirmButton: false, timer: 3500 })
   } finally {
     isSubmitting.value = false
   }

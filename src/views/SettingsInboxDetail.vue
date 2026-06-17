@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, Sparkles } from 'lucide-vue-next'
 import api from '../api'
+import Swal from 'sweetalert2'
 import PromptGeneratorModal from '../components/PromptGeneratorModal.vue'
 
 const route = useRoute()
@@ -82,7 +83,7 @@ const toggleAgent = async (agent) => {
     }
   } catch (error) {
     console.error('Failed to toggle agent:', error)
-    alert('Erro ao atualizar permissão do agente.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao atualizar permissão do agente.', showConfirmButton: false, timer: 3500 })
   }
 }
 
@@ -98,7 +99,7 @@ const goBack = () => {
 const saveSettings = async () => {
   try {
     if (inbox.value.followup_enabled && inbox.value.followup_wait_time_minutes < 10) {
-      alert('O tempo de espera para o resgate (follow-up) não pode ser menor que 10 minutos.');
+      Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'O tempo mínimo do follow-up é 10 minutos.', showConfirmButton: false, timer: 4000 })
       return;
     }
 
@@ -119,7 +120,7 @@ const saveSettings = async () => {
         followup_closing_message: inbox.value.followup_closing_message
       }
     })
-    alert('Configurações salvas!')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Configurações salvas!', showConfirmButton: false, timer: 3000 })
   } catch (error) {
     console.error('Error saving settings:', error)
   }

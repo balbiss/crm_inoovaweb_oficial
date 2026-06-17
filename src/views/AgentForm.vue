@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft, Save, Eye, EyeOff, Shuffle } from 'lucide-vue-next'
 import api from '../api'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
@@ -86,7 +87,7 @@ const saveAgent = async () => {
     router.push('/agentes')
   } catch (error) {
     console.error('Erro ao salvar agente:', error)
-    alert("Ocorreu um erro ao salvar os dados. Verifique o e-mail ou a senha.")
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Ocorreu um erro ao salvar os dados. Verifique o e-mail ou a senha.', showConfirmButton: false, timer: 3500 })
   }
 }
 </script>

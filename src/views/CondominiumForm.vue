@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { ArrowLeft, Save, Plus, Trash2, MapPin, ImagePlus, X } from '@lucide/vue'
 import api from '../api'
+import Swal from 'sweetalert2'
 
 const router = useRouter()
 const route = useRoute()
@@ -229,7 +230,7 @@ const submitForm = async () => {
     router.push('/condominios')
   } catch (error) {
     console.error('Erro ao salvar', error)
-    alert('Erro ao salvar condomínio. Verifique os dados.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao salvar condomínio. Verifique os dados.', showConfirmButton: false, timer: 3500 })
   } finally {
     isSubmitting.value = false
   }

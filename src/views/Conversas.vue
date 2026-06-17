@@ -38,6 +38,7 @@ import {
 } from '@lucide/vue'
 
 import api from '../api'
+import Swal from 'sweetalert2'
 
 import EmojiPicker from 'vue3-emoji-picker'
 import 'vue3-emoji-picker/css'
@@ -87,7 +88,7 @@ const cancelScheduledMessage = async (msgId) => {
     scheduledMessages.value = scheduledMessages.value.filter(m => m.id !== msgId)
   } catch (error) {
     console.error('Error canceling scheduled message:', error)
-    alert('Erro ao cancelar agendamento.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao cancelar agendamento.', showConfirmButton: false, timer: 3500 })
   }
 }
 
@@ -101,7 +102,7 @@ const handleAssign = async (userId) => {
     await store.assignConversation(store.activeConversation.id, newUserId)
   } catch (error) {
     console.error('Error assigning conversation:', error)
-    alert('Erro ao atribuir a conversa.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao atribuir a conversa.', showConfirmButton: false, timer: 3500 })
   } finally {
     isAssigning.value = false
   }
@@ -128,7 +129,7 @@ const saveNote = async () => {
     newNoteText.value = ''
   } catch (error) {
     console.error('Error saving note:', error)
-    alert('Erro ao salvar nota.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao salvar nota.', showConfirmButton: false, timer: 3500 })
   } finally {
     isSavingNote.value = false
   }
@@ -165,7 +166,7 @@ const generateSummary = async () => {
     newMessageText.value = response.data.summary
   } catch (error) {
     console.error('Error generating summary:', error)
-    alert('Erro ao gerar resumo da conversa.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao gerar resumo da conversa.', showConfirmButton: false, timer: 3500 })
   } finally {
     isGeneratingSummary.value = false
   }

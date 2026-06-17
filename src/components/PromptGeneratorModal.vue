@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { X, Sparkles, Loader2 } from 'lucide-vue-next'
 import api from '../api'
+import Swal from 'sweetalert2'
 
 const props = defineProps({
   inboxId: { type: [Number, String], required: true },
@@ -27,7 +28,7 @@ const form = ref({
 
 const generatePrompt = async () => {
   if (!form.value.identity || !form.value.institutional) {
-    alert("Por favor, preencha pelo menos a Identidade e Institucional.")
+    Swal.fire({ toast: true, position: 'top-end', icon: 'warning', title: 'Por favor, preencha pelo menos a Identidade e Institucional.', showConfirmButton: false, timer: 4000 })
     return
   }
 
@@ -41,7 +42,7 @@ const generatePrompt = async () => {
     closeModal()
   } catch (error) {
     console.error('Failed to generate prompt:', error)
-    alert("Erro ao gerar o prompt. Tente novamente.")
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao gerar o prompt. Tente novamente.', showConfirmButton: false, timer: 3500 })
   } finally {
     isGenerating.value = false
   }

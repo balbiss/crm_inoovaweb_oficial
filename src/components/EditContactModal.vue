@@ -233,6 +233,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { useConversationsStore } from '../store/conversations'
+import Swal from 'sweetalert2'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -365,7 +366,7 @@ const save = async () => {
     await store.updateContact(props.contact.id, dataToSave)
     close()
   } catch (error) {
-    alert('Erro ao salvar contato.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao salvar contato.', showConfirmButton: false, timer: 3500 })
   } finally {
     loading.value = false
   }

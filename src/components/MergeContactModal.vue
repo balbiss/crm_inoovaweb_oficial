@@ -36,6 +36,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { useConversationsStore } from '../store/conversations'
+import Swal from 'sweetalert2'
 
 const props = defineProps({
   isOpen: Boolean,
@@ -79,7 +80,7 @@ const merge = async () => {
     await store.mergeContact(props.contact.id, selectedContactId.value)
     close()
   } catch (error) {
-    alert('Erro ao mesclar contato.')
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao mesclar contato.', showConfirmButton: false, timer: 3500 })
   } finally {
     loading.value = false
   }

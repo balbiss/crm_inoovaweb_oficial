@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { Plus, Edit2, Trash2, Tag as TagIcon, X, Save } from 'lucide-vue-next'
 import api from '../../api'
+import Swal from 'sweetalert2'
 
 const tags = ref([])
 const isLoading = ref(false)
@@ -71,7 +72,7 @@ const saveTag = async () => {
     window.dispatchEvent(new Event('tags-updated'))
   } catch (error) {
     console.error('Erro ao salvar etiqueta:', error)
-    alert("Erro ao salvar a etiqueta.")
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao salvar a etiqueta.', showConfirmButton: false, timer: 3500 })
   }
 }
 
