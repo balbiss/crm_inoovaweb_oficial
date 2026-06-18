@@ -364,7 +364,7 @@ export const useConversationsStore = defineStore('conversations', {
         this.ws = null
         const delay = Math.min(this._wsReconnectDelay || 3000, 30000)
         this._wsReconnectDelay = delay * 2
-        setTimeout(() => this.setupWebSocket(), delay)
+        setTimeout(() => this.fetchConversations(), delay)
       }
 
       ws.onerror = () => {
