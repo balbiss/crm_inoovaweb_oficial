@@ -157,6 +157,12 @@ const router = createRouter({
           component: () => import('../views/settings/Tags.vue'),
           meta: { requiresOwner: true }
         },
+        {
+          path: 'settings/portals',
+          name: 'SettingsPortals',
+          component: () => import('../views/settings/Portals.vue'),
+          meta: { requiresOwner: true }
+        },
         // Rotas abertas a todos
         {
           path: 'funil',

@@ -522,6 +522,7 @@ const handleLogout = () => {
             <router-link to="/suporte" class="nav-item sub-item"><HelpCircle class="icon-sm" /> Central de Suporte</router-link>
             <router-link to="/settings/inboxes" class="nav-item sub-item"><Inbox class="icon-sm" /> Caixas de Entrada</router-link>
             <router-link to="/settings/tags" class="nav-item sub-item" active-class="active"><Tag class="icon-sm" /> Etiquetas</router-link>
+            <router-link v-if="isAdminOrEmpresa" to="/settings/portals" class="nav-item sub-item" active-class="active"><TrendingUp class="icon-sm" /> Portais Imobiliários</router-link>
           </div>
         </div>
       </nav>
