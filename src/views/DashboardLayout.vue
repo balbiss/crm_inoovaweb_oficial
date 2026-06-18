@@ -282,6 +282,7 @@ onMounted(() => {
   fetchTags()
   window.addEventListener('tags-updated', fetchTags)
   window.addEventListener('lead-atribuido', handleLeadAtribuido)
+  window.addEventListener('property-match-found', handlePropertyMatchFound)
 })
 
 const handleLeadAtribuido = (e) => {
@@ -324,12 +325,32 @@ const handleLeadAtribuido = (e) => {
   })
 }
 
+const handlePropertyMatchFound = (e) => {
+  const { property_title, match_count } = e.detail
+  Swal.fire({
+    toast: true,
+    position: 'top-end',
+    icon: 'success',
+    title: '🏠 Match de Leads Encontrado!',
+    html: `<strong>${property_title}</strong><br><small style="color:#6b7280">${match_count} lead(s) compatível(is) foram notificados no WhatsApp</small>`,
+    showConfirmButton: true,
+    confirmButtonText: 'Ver Imóveis',
+    confirmButtonColor: '#10b981',
+    showCloseButton: true,
+    timer: 15000,
+    timerProgressBar: true
+  }).then((result) => {
+    if (result.isConfirmed) router.push('/imoveis')
+  })
+}
+
 onUnmounted(() => {
   window.removeEventListener('keydown', handlePaletteKeydown)
   if (notificationInterval) clearInterval(notificationInterval)
   document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('tags-updated', fetchTags)
   window.removeEventListener('lead-atribuido', handleLeadAtribuido)
+  window.removeEventListener('property-match-found', handlePropertyMatchFound)
 })
 
 const handleLogout = () => {

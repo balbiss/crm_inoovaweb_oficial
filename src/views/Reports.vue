@@ -2,7 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Bar, Doughnut } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, ArcElement, CategoryScale, LinearScale } from 'chart.js'
-import { Download, Users, TrendingUp, Tag, CalendarCheck, RefreshCw, FileText } from 'lucide-vue-next'
+import { Download, Users, TrendingUp, Tag, CalendarCheck, RefreshCw, FileText, BarChart2, Clock, Home } from 'lucide-vue-next'
 import api from '../api'
 import Swal from 'sweetalert2'
 
@@ -21,6 +21,7 @@ const agentsData         = ref([])
 const tagsData           = ref([])
 const selectedTag        = ref(null)
 const appointmentsReport = ref(null)
+const performanceData    = ref(null)
 
 const periodOptions = [
   { value: 'today',  label: 'Hoje' },
@@ -99,11 +100,25 @@ const exportAppointments = async () => {
   } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao exportar.', showConfirmButton: false, timer: 3000 }) }
 }
 
+const fetchPerformance = async (silent = false) => {
+  if (!silent) isLoading.value = true
+  try {
+    const [perfR, agentsR] = await Promise.all([
+      api.get('/reports/performance'),
+      api.get('/reports/by_agent', { params: periodParams.value })
+    ])
+    performanceData.value = perfR.data
+    agentsData.value = agentsR.data.agents || []
+  } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar desempenho.', showConfirmButton: false, timer: 3000 }) }
+  finally { isLoading.value = false }
+}
+
 const loadTab = (silent = false) => {
   if (activeTab.value === 'overview')          fetchOverview(silent)
   else if (activeTab.value === 'agents')       fetchAgents(silent)
   else if (activeTab.value === 'tags')         fetchTags(silent)
   else if (activeTab.value === 'appointments') fetchAppointments(silent)
+  else if (activeTab.value === 'performance')  fetchPerformance(silent)
 }
 
 watch(activeTab, () => loadTab(false))
@@ -160,6 +175,18 @@ const agentLeadsChart = computed(() => ({
   ]
 }))
 
+const convTrendChart = computed(() => {
+  if (!performanceData.value?.conv_trend) return { labels: [], datasets: [] }
+  const trend = performanceData.value.conv_trend
+  return {
+    labels: trend.map(d => d.date),
+    datasets: [
+      { label: 'Abertas', data: trend.map(d => d.opened), backgroundColor: '#6366f1', borderRadius: 4, borderSkipped: false },
+      { label: 'Resolvidas', data: trend.map(d => d.resolved), backgroundColor: '#10b981', borderRadius: 4, borderSkipped: false }
+    ]
+  }
+})
+
 const barOptions = {
   responsive: true, maintainAspectRatio: false,
   plugins: { legend: { position: 'bottom' } },
@@ -211,6 +238,9 @@ const donutOptions = {
       </button>
       <button v-if="isOwner" :class="['tab', { active: activeTab === 'tags' }]" @click="activeTab = 'tags'">
         <Tag class="ic" /> Por Etiqueta
+      </button>
+      <button v-if="isOwner" :class="['tab', { active: activeTab === 'performance' }]" @click="activeTab = 'performance'">
+        <BarChart2 class="ic" /> Desempenho
       </button>
     </div>
 
@@ -479,6 +509,91 @@ const donutOptions = {
       </div>
     </template>
 
+    <!-- ===== PERFORMANCE ===== -->
+    <template v-else-if="activeTab === 'performance' && performanceData">
+
+      <!-- KPI tempo médio -->
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <Clock class="kpi-icon-sm" />
+            <span class="kpi-label">Tempo Médio de 1º Atendimento</span>
+          </div>
+          <div class="kpi-val" v-if="performanceData.avg_response_time_minutes !== null">
+            {{ performanceData.avg_response_time_minutes }} min
+          </div>
+          <div class="kpi-val grey" v-else>— sem dados</div>
+        </div>
+      </div>
+
+      <!-- Tendência de conversas 7 dias -->
+      <div class="chart-panel mt-section">
+        <div class="panel-head-row">
+          <BarChart2 class="ic-purple" />
+          <span>Conversas — Últimos 7 Dias</span>
+        </div>
+        <div class="chart-area">
+          <Bar :data="convTrendChart" :options="barOptions" />
+        </div>
+      </div>
+
+      <!-- Taxa de conversão por corretor -->
+      <div class="chart-panel mt-section">
+        <div class="panel-head-row">
+          <Users class="ic-purple" />
+          <span>Taxa de Conversão por Corretor</span>
+          <button class="btn-export-sm" @click="exportCSV('agents')"><Download class="ic" /> CSV</button>
+        </div>
+        <div class="table-wrap" v-if="agentsData.length">
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Corretor</th>
+                <th>Leads</th>
+                <th>Visitas</th>
+                <th>Fechados</th>
+                <th>Conversão</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="a in agentsData" :key="a.id">
+                <td class="agent-name">{{ a.name }}</td>
+                <td>{{ a.leads_received }}</td>
+                <td>{{ a.visits_scheduled }}</td>
+                <td>{{ a.won }}</td>
+                <td>
+                  <span class="conv-badge" :class="a.conversion_rate >= 20 ? 'green' : a.conversion_rate >= 5 ? 'amber' : 'grey'">
+                    {{ a.conversion_rate }}%
+                  </span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="no-data-msg" v-else>Nenhum corretor encontrado no período.</div>
+      </div>
+
+      <!-- Top imóveis consultados pela IA -->
+      <div class="chart-panel mt-section">
+        <div class="panel-head-row">
+          <Home class="ic-purple" />
+          <span>Imóveis Mais Consultados pela IA</span>
+        </div>
+        <div v-if="performanceData.top_properties.length">
+          <div class="prop-rank-item" v-for="(p, i) in performanceData.top_properties" :key="p.id">
+            <span class="rank-num">{{ i + 1 }}</span>
+            <div class="prop-rank-info">
+              <span class="prop-rank-title">{{ p.title || 'Sem título' }}</span>
+              <span class="prop-rank-sub">{{ p.neighborhood }} · R$ {{ Number(p.price).toLocaleString('pt-BR') }}</span>
+            </div>
+            <span class="prop-rank-count">{{ p.search_count }}x</span>
+          </div>
+        </div>
+        <div class="no-data-msg" v-else>Nenhum imóvel consultado ainda. A contagem começa quando a IA busca imóveis para leads.</div>
+      </div>
+
+    </template>
+
   </div>
 </template>
 
@@ -742,4 +857,73 @@ const donutOptions = {
   .chart-row  { grid-template-columns: 1fr; }
   .tags-layout { grid-template-columns: 1fr; }
 }
+
+/* Performance tab */
+.mt-section { margin-top: 1.5rem; }
+
+.chart-panel {
+  background: var(--bg-secondary, #fff);
+  border: 1px solid var(--border-color, #e8edf2);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.panel-head-row {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.9rem 1.25rem;
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+  font-size: 0.88rem; font-weight: 600; color: var(--text-main, #1e293b);
+  background: var(--bg-primary, #fafafa);
+  .ic-purple { width: 16px; height: 16px; color: #6366f1; }
+  span { flex: 1; }
+}
+
+.chart-area { padding: 1.25rem; height: 240px; }
+
+.kpi-icon-sm { width: 16px; height: 16px; color: #6366f1; margin-right: 0.4rem; }
+
+.kpi-top { display: flex; align-items: center; margin-bottom: 0.5rem; }
+
+.kpi-val.grey { color: var(--text-muted, #94a3b8); font-size: 1.1rem; }
+
+.no-data-msg {
+  padding: 2rem 1.25rem; text-align: center;
+  font-size: 0.82rem; color: var(--text-muted, #94a3b8);
+}
+
+.btn-export-sm {
+  display: inline-flex; align-items: center; gap: 0.3rem;
+  padding: 0.25rem 0.65rem; border-radius: 6px; font-size: 0.75rem; font-weight: 500;
+  border: 1px solid var(--border-color, #e2e8f0); background: var(--bg-secondary, #fff);
+  color: var(--text-main, #334155); cursor: pointer;
+  .ic { width: 12px; height: 12px; }
+  &:hover { background: var(--bg-primary, #f8fafc); }
+}
+
+.conv-badge {
+  display: inline-block; padding: 0.15rem 0.55rem; border-radius: 12px;
+  font-size: 0.75rem; font-weight: 700;
+  &.green  { background: #ecfdf5; color: #059669; }
+  &.amber  { background: #fffbeb; color: #d97706; }
+  &.grey   { background: #f1f5f9; color: #64748b; }
+}
+
+.prop-rank-item {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+  &:last-child { border-bottom: none; }
+}
+
+.rank-num {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: #6366f1; color: white;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.72rem; font-weight: 700; flex-shrink: 0;
+}
+
+.prop-rank-info { flex: 1; }
+.prop-rank-title { display: block; font-size: 0.85rem; font-weight: 600; color: var(--text-main, #1e293b); }
+.prop-rank-sub   { display: block; font-size: 0.75rem; color: var(--text-muted, #64748b); margin-top: 0.1rem; }
+.prop-rank-count { font-size: 0.88rem; font-weight: 700; color: #6366f1; white-space: nowrap; }
 </style>

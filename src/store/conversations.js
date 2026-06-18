@@ -349,6 +349,8 @@ export const useConversationsStore = defineStore('conversations', {
           } else if (payload.event === 'conversation_updated') {
             const idx = this.conversations.findIndex(c => Number(c.id) === Number(payload.conversation?.id))
             if (idx !== -1) Object.assign(this.conversations[idx], payload.conversation)
+          } else if (payload.event === 'property_match_found') {
+            window.dispatchEvent(new CustomEvent('property-match-found', { detail: payload }))
           } else if (payload.event === 'lead_atribuido') {
             const me = this.currentUser
             if (Number(payload.assigned_to_user_id) === Number(me?.id)) {
