@@ -17,6 +17,7 @@ const form = ref({
   identity: '',
   institutional: '',
   faq: '',
+  greeting_message: '',
   ai_role: 'sdr_and_sales', // 'sdr_only', 'sdr_and_sales'
   allow_scheduling: true,
   use_whatsapp_name: true,
@@ -84,9 +85,15 @@ const closeModal = () => {
           <textarea v-model="form.faq" placeholder="Ex: - Aceita pet? Sim.&#10;- Aceita fiador? Não, apenas seguro fiança.&#10;- Faz minha casa minha vida? Não."></textarea>
         </div>
 
+        <div class="form-group">
+          <label>4. Mensagem de Saudação (Primeiro Contato)</label>
+          <textarea v-model="form.greeting_message" placeholder="Ex: Olá! 👋 Bem-vindo à Imobiliária Alpha! Sou a Ana, sua assistente virtual. Estou aqui para te ajudar a encontrar o imóvel dos seus sonhos. Como posso te ajudar hoje?"></textarea>
+          <small class="help-hint">Esta é a mensagem exata que a IA enviará quando um novo cliente entrar em contato pela primeira vez. Se não preencher, a IA criará uma saudação natural com base na identidade definida.</small>
+        </div>
+
         <div class="form-row-split">
           <div class="form-group">
-            <label>4. Modo de Atuação da IA</label>
+            <label>5. Modo de Atuação da IA</label>
             <select v-model="form.ai_role" class="form-select">
               <option value="sdr_and_sales">Completo (Qualifica, Oferta Imóveis e Agenda)</option>
               <option value="sdr_only">Apenas Pré-venda/SDR (Coleta dados e transfere)</option>
@@ -124,17 +131,17 @@ const closeModal = () => {
         </div>
 
         <div class="form-group">
-          <label>5. Regras de SDR (Pré-venda)</label>
+          <label>6. Regras de SDR (Pré-venda)</label>
           <textarea v-model="form.sdr_rules" placeholder="Ex: Obrigatório coletar o Nome, Telefone, Bairro de interesse e se o cliente já tem aprovação na Caixa Econômica antes de enviar qualquer imóvel."></textarea>
         </div>
 
         <div class="form-group">
-          <label>6. Gatilhos de Transferência (Quando chamar um humano)</label>
+          <label>7. Gatilhos de Transferência (Quando chamar um humano)</label>
           <textarea v-model="form.routing_rules" placeholder="Ex: Transferir imediatamente se o cliente pedir para falar com humano, ligar, ou fizer perguntas complexas de financiamento."></textarea>
         </div>
 
         <div class="form-group">
-          <label>7. Restrições e Proibições (O que a IA NUNCA deve fazer)</label>
+          <label>8. Restrições e Proibições (O que a IA NUNCA deve fazer)</label>
           <textarea v-model="form.prohibited_actions" placeholder="Ex: Nunca prometer descontos. Nunca dizer que não sabemos de algo, diga que vai consultar o corretor. Nunca passar endereço exato sem agendar."></textarea>
         </div>
       </div>
@@ -361,5 +368,12 @@ const closeModal = () => {
   color: var(--text-muted);
   margin-top: 0.25rem;
   margin-left: 1.5rem;
+}
+
+.help-hint {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-top: 0.15rem;
+  font-style: italic;
 }
 </style>
