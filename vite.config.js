@@ -6,11 +6,12 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'vendor-vue': ['vue', 'vue-router', 'pinia'],
-          'vendor-charts': ['chart.js', 'vue-chartjs'],
-          'vendor-ui': ['sweetalert2', 'lucide-vue-next'],
-          'vendor-axios': ['axios'],
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return
+          if (id.includes('vue') || id.includes('pinia') || id.includes('vue-router')) return 'vendor-vue'
+          if (id.includes('chart.js') || id.includes('vue-chartjs')) return 'vendor-charts'
+          if (id.includes('sweetalert2') || id.includes('lucide')) return 'vendor-ui'
+          if (id.includes('axios')) return 'vendor-axios'
         }
       }
     }
