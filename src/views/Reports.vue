@@ -1,0 +1,599 @@
+<script setup>
+import { ref, computed, onMounted, watch } from 'vue'
+import { Bar, Doughnut } from 'vue-chartjs'
+import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, ArcElement, CategoryScale, LinearScale } from 'chart.js'
+import { Download, Users, TrendingUp, Tag, Calendar, RefreshCw, FileText, ChevronDown } from 'lucide-vue-next'
+import api from '../api'
+import Swal from 'sweetalert2'
+
+ChartJS.register(Title, Tooltip, Legend, BarElement, ArcElement, CategoryScale, LinearScale)
+
+const activeTab   = ref('overview')
+const period      = ref('month')
+const startDate   = ref('')
+const endDate     = ref('')
+const isLoading   = ref(false)
+
+const overview    = ref(null)
+const agentsData  = ref([])
+const tagsData    = ref([])
+const selectedTag = ref(null)
+
+const periodOptions = [
+  { value: 'today',  label: 'Hoje' },
+  { value: 'week',   label: 'Esta semana' },
+  { value: 'month',  label: 'Este mês' },
+  { value: 'custom', label: 'Personalizado' }
+]
+
+const periodParams = computed(() => {
+  const p = { period: period.value }
+  if (period.value === 'custom') {
+    p.start_date = startDate.value
+    p.end_date   = endDate.value
+  }
+  return p
+})
+
+const fetchOverview = async () => {
+  isLoading.value = true
+  try {
+    const r = await api.get('/reports/overview', { params: periodParams.value })
+    overview.value = r.data
+  } catch (e) {
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar visão geral.', showConfirmButton: false, timer: 3000 })
+  } finally { isLoading.value = false }
+}
+
+const fetchAgents = async () => {
+  isLoading.value = true
+  try {
+    const r = await api.get('/reports/by_agent', { params: periodParams.value })
+    agentsData.value = r.data.agents || []
+  } catch (e) {
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar relatório de corretores.', showConfirmButton: false, timer: 3000 })
+  } finally { isLoading.value = false }
+}
+
+const fetchTags = async () => {
+  isLoading.value = true
+  try {
+    const r = await api.get('/reports/by_tag')
+    tagsData.value = r.data.tags || []
+    if (tagsData.value.length && !selectedTag.value) selectedTag.value = tagsData.value[0]
+  } catch (e) {
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar etiquetas.', showConfirmButton: false, timer: 3000 })
+  } finally { isLoading.value = false }
+}
+
+const exportCSV = async (type, tagId = null) => {
+  try {
+    const params = { ...periodParams.value, type }
+    if (tagId) params.tag_id = tagId
+    const r = await api.get('/reports/export', { params, responseType: 'blob' })
+    const url  = window.URL.createObjectURL(new Blob([r.data], { type: 'text/csv' }))
+    const link = document.createElement('a')
+    link.href  = url
+    const disp = r.headers['content-disposition'] || ''
+    link.setAttribute('download', disp.match(/filename="?([^"]+)"?/)?.[1] || `relatorio_${type}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'CSV exportado!', showConfirmButton: false, timer: 2500 })
+  } catch (e) {
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao exportar.', showConfirmButton: false, timer: 3000 })
+  }
+}
+
+const loadTab = () => {
+  if (activeTab.value === 'overview') fetchOverview()
+  else if (activeTab.value === 'agents') fetchAgents()
+  else if (activeTab.value === 'tags') fetchTags()
+}
+
+watch(activeTab, loadTab)
+watch(period, () => { if (period.value !== 'custom') loadTab() })
+onMounted(loadTab)
+
+// Chart data
+const funnelChart = computed(() => {
+  if (!overview.value) return { labels: [], datasets: [] }
+  const f = overview.value.funnel
+  return {
+    labels: ['Novos Leads', 'Visita Agendada', 'Proposta', 'Fechado'],
+    datasets: [{ label: 'Leads', data: [f.lead, f.visit, f.proposal, f.won],
+      backgroundColor: ['#6366f1','#f59e0b','#3b82f6','#10b981'],
+      borderRadius: 6, borderSkipped: false }]
+  }
+})
+
+const sourceChart = computed(() => {
+  if (!overview.value?.by_source) return { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#e5e7eb'] }] }
+  const src = overview.value.by_source
+  const labels = Object.keys(src)
+  if (!labels.length) return { labels: ['Sem dados'], datasets: [{ data: [1], backgroundColor: ['#e5e7eb'] }] }
+  return {
+    labels,
+    datasets: [{ data: Object.values(src),
+      backgroundColor: ['#6366f1','#10b981','#f59e0b','#ef4444','#3b82f6','#ec4899','#0d9488'] }]
+  }
+})
+
+const agentLeadsChart = computed(() => ({
+  labels: agentsData.value.map(a => a.name.split(' ')[0]),
+  datasets: [
+    { label: 'Leads', data: agentsData.value.map(a => a.leads_received), backgroundColor: '#6366f1', borderRadius: 4 },
+    { label: 'Fechados', data: agentsData.value.map(a => a.won), backgroundColor: '#10b981', borderRadius: 4 }
+  ]
+}))
+
+const barOptions = {
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { position: 'bottom' } },
+  scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+}
+const donutOptions = {
+  responsive: true, maintainAspectRatio: false, cutout: '65%',
+  plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 12, usePointStyle: true } } }
+}
+</script>
+
+<template>
+  <div class="reports-page">
+    <!-- Header -->
+    <div class="page-header">
+      <div>
+        <h1><FileText class="h-icon" /> Relatórios</h1>
+        <p>Análise completa de leads, corretores e campanhas</p>
+      </div>
+      <div class="header-actions">
+        <select v-model="period" class="period-select">
+          <option v-for="o in periodOptions" :key="o.value" :value="o.value">{{ o.label }}</option>
+        </select>
+        <div v-if="period === 'custom'" class="custom-dates">
+          <input type="date" v-model="startDate" class="date-input" />
+          <span>até</span>
+          <input type="date" v-model="endDate" class="date-input" />
+          <button class="btn-apply" @click="loadTab">Aplicar</button>
+        </div>
+        <button class="btn-refresh" @click="loadTab" :disabled="isLoading">
+          <RefreshCw class="ic" :class="{ spinning: isLoading }" />
+        </button>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button :class="['tab', { active: activeTab === 'overview' }]" @click="activeTab = 'overview'">
+        <TrendingUp class="ic" /> Visão Geral
+      </button>
+      <button :class="['tab', { active: activeTab === 'agents' }]" @click="activeTab = 'agents'">
+        <Users class="ic" /> Por Corretor
+      </button>
+      <button :class="['tab', { active: activeTab === 'tags' }]" @click="activeTab = 'tags'">
+        <Tag class="ic" /> Por Etiqueta
+      </button>
+    </div>
+
+    <!-- Skeleton -->
+    <div v-if="isLoading" class="skeleton-grid">
+      <div class="skel" v-for="i in 6" :key="i"></div>
+    </div>
+
+    <!-- ===== OVERVIEW ===== -->
+    <template v-else-if="activeTab === 'overview' && overview">
+      <div class="kpi-row">
+        <div class="kpi-card">
+          <div class="kpi-top">
+            <span class="kpi-label">Total de Leads</span>
+            <span class="kpi-badge blue">{{ period === 'month' ? 'Este mês' : '' }}</span>
+          </div>
+          <div class="kpi-val">{{ overview.total_leads }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Leads Quentes</span></div>
+          <div class="kpi-val red">{{ overview.by_temperature.quente }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Negócios Fechados</span></div>
+          <div class="kpi-val green">{{ overview.funnel.won }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Taxa de Conversão</span></div>
+          <div class="kpi-val indigo">
+            {{ overview.total_leads > 0 ? ((overview.funnel.won / overview.total_leads) * 100).toFixed(1) : 0 }}%
+          </div>
+        </div>
+      </div>
+
+      <div class="chart-row">
+        <div class="chart-panel">
+          <div class="chart-head">
+            Funil de Vendas
+            <button class="btn-export" @click="exportCSV('leads')"><Download class="ic" /> Exportar Leads CSV</button>
+          </div>
+          <div class="chart-body">
+            <Bar :data="funnelChart" :options="barOptions" />
+          </div>
+        </div>
+        <div class="chart-panel">
+          <div class="chart-head">Origem dos Leads</div>
+          <div class="chart-body">
+            <Doughnut :data="sourceChart" :options="donutOptions" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Temperatura breakdown -->
+      <div class="breakdown-panel">
+        <div class="chart-head">Termômetro Detalhado</div>
+        <div class="temp-row">
+          <div class="temp-item hot">
+            <span class="temp-icon">🔥</span>
+            <span class="temp-n">{{ overview.by_temperature.quente }}</span>
+            <span class="temp-lbl">Quentes</span>
+          </div>
+          <div class="temp-item warm">
+            <span class="temp-icon">🌤</span>
+            <span class="temp-n">{{ overview.by_temperature.morno }}</span>
+            <span class="temp-lbl">Mornos</span>
+          </div>
+          <div class="temp-item cold">
+            <span class="temp-icon">❄️</span>
+            <span class="temp-n">{{ overview.by_temperature.frio }}</span>
+            <span class="temp-lbl">Frios</span>
+          </div>
+        </div>
+      </div>
+    </template>
+
+    <!-- ===== POR CORRETOR ===== -->
+    <template v-else-if="activeTab === 'agents'">
+      <div class="chart-row" v-if="agentsData.length">
+        <div class="chart-panel wide">
+          <div class="chart-head">
+            Leads por Corretor
+            <button class="btn-export" @click="exportCSV('agents')"><Download class="ic" /> Exportar CSV</button>
+          </div>
+          <div class="chart-body">
+            <Bar :data="agentLeadsChart" :options="barOptions" />
+          </div>
+        </div>
+      </div>
+
+      <div class="table-panel">
+        <div class="chart-head">Desempenho Detalhado por Corretor</div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Corretor</th>
+              <th>Leads Recebidos</th>
+              <th>Quentes</th>
+              <th>Visitas Agendadas</th>
+              <th>Visitas Realizadas</th>
+              <th>Fechados</th>
+              <th>Conversão</th>
+              <th>Conv. Abertas</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="agentsData.length === 0">
+              <td colspan="8" class="no-data-cell">Nenhum corretor encontrado.</td>
+            </tr>
+            <tr v-for="a in agentsData" :key="a.id">
+              <td class="agent-name">{{ a.name }}</td>
+              <td class="center"><span class="badge-num blue">{{ a.leads_received }}</span></td>
+              <td class="center"><span class="badge-num red">{{ a.quentes }}</span></td>
+              <td class="center">{{ a.visits_scheduled }}</td>
+              <td class="center">{{ a.visits_done }}</td>
+              <td class="center"><span class="badge-num green">{{ a.won }}</span></td>
+              <td class="center">
+                <span :class="['rate', a.conversion_rate >= 20 ? 'rate-good' : a.conversion_rate >= 5 ? 'rate-mid' : 'rate-low']">
+                  {{ a.conversion_rate }}%
+                </span>
+              </td>
+              <td class="center">{{ a.open_conversations }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+
+    <!-- ===== POR ETIQUETA ===== -->
+    <template v-else-if="activeTab === 'tags'">
+      <div class="tags-layout">
+        <!-- Sidebar de etiquetas -->
+        <div class="tags-sidebar">
+          <div class="sidebar-head">Etiquetas</div>
+          <div v-for="tag in tagsData" :key="tag.id"
+            :class="['tag-item', { active: selectedTag?.id === tag.id }]"
+            @click="selectedTag = tag">
+            <span class="tag-dot" :style="{ background: tag.color }"></span>
+            <span class="tag-name">{{ tag.name }}</span>
+            <span class="tag-count">{{ tag.count }}</span>
+          </div>
+          <div v-if="!tagsData.length" class="no-tags">Nenhuma etiqueta encontrada.</div>
+        </div>
+
+        <!-- Lista de contatos da etiqueta selecionada -->
+        <div class="tags-content" v-if="selectedTag">
+          <div class="chart-head">
+            <span>
+              <span class="tag-badge" :style="{ background: selectedTag.color }">{{ selectedTag.name }}</span>
+              — {{ selectedTag.count }} contatos
+            </span>
+            <div class="export-group">
+              <button class="btn-export green" @click="exportCSV('remarketing', selectedTag.id)">
+                <Download class="ic" /> Exportar para Remarketing
+              </button>
+            </div>
+          </div>
+          <table class="report-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Temperatura</th>
+                <th>Origem</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="!selectedTag.contacts?.length">
+                <td colspan="4" class="no-data-cell">Nenhum contato nesta etiqueta.</td>
+              </tr>
+              <tr v-for="c in selectedTag.contacts" :key="c.id">
+                <td class="agent-name">{{ c.name || '—' }}</td>
+                <td>{{ c.phone }}</td>
+                <td>
+                  <span :class="['temp-badge', c.temperature?.toLowerCase()]">{{ c.temperature || '—' }}</span>
+                </td>
+                <td>{{ c.source || '—' }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </template>
+
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.reports-page {
+  padding: 2rem 2.5rem;
+  background: var(--bg-primary, #f8f9fb);
+  min-height: 100%;
+  font-family: 'Inter', sans-serif;
+}
+
+.page-header {
+  display: flex; justify-content: space-between; align-items: flex-start;
+  margin-bottom: 1.5rem;
+  h1 { font-size: 1.4rem; font-weight: 700; color: var(--text-main, #0f172a); margin: 0 0 0.2rem; display: flex; align-items: center; gap: 0.5rem; }
+  p  { font-size: 0.85rem; color: var(--text-muted, #64748b); margin: 0; }
+  .h-icon { width: 22px; height: 22px; color: #6366f1; }
+}
+
+.header-actions {
+  display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
+}
+
+.period-select {
+  border: 1px solid var(--border-color, #e2e8f0); border-radius: 8px;
+  padding: 0.4rem 0.75rem; font-size: 0.85rem; background: var(--bg-secondary, #fff);
+  color: var(--text-main, #334155); cursor: pointer;
+  &:focus { outline: none; border-color: #6366f1; }
+}
+
+.custom-dates {
+  display: flex; align-items: center; gap: 0.5rem; font-size: 0.82rem;
+  color: var(--text-muted, #64748b);
+}
+
+.date-input {
+  border: 1px solid var(--border-color, #e2e8f0); border-radius: 6px;
+  padding: 0.35rem 0.6rem; font-size: 0.82rem;
+  background: var(--bg-secondary, #fff); color: var(--text-main);
+}
+
+.btn-apply {
+  background: #6366f1; color: white; border: none; border-radius: 6px;
+  padding: 0.35rem 0.75rem; font-size: 0.82rem; cursor: pointer;
+}
+
+.btn-refresh {
+  background: var(--bg-secondary, #fff); border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 8px; padding: 0.4rem; cursor: pointer; display: flex; align-items: center;
+  color: var(--text-muted);
+  &:disabled { opacity: 0.5; }
+  .ic { width: 16px; height: 16px; }
+}
+
+.spinning { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Tabs */
+.tabs {
+  display: flex; gap: 0.25rem; margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--border-color, #e2e8f0);
+  padding-bottom: 0;
+}
+
+.tab {
+  display: flex; align-items: center; gap: 0.4rem;
+  padding: 0.6rem 1.25rem;
+  background: none; border: none; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; cursor: pointer;
+  font-size: 0.88rem; font-weight: 500; color: var(--text-muted, #64748b);
+  transition: all 0.15s;
+  .ic { width: 15px; height: 15px; }
+  &:hover { color: #6366f1; }
+  &.active { color: #6366f1; border-bottom-color: #6366f1; font-weight: 600; }
+}
+
+/* KPIs */
+.kpi-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;
+}
+
+.kpi-card {
+  background: var(--bg-secondary, #fff);
+  border: 1px solid var(--border-color, #e8edf2);
+  border-radius: 12px; padding: 1.1rem 1.25rem;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.kpi-top {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.kpi-label { font-size: 0.72rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted, #94a3b8); }
+.kpi-badge { font-size: 0.65rem; padding: 0.15rem 0.5rem; border-radius: 10px; font-weight: 600;
+  &.blue { background: #eff6ff; color: #2563eb; } }
+
+.kpi-val {
+  font-size: 2rem; font-weight: 800; color: var(--text-main, #0f172a); letter-spacing: -0.02em;
+  &.red    { color: #dc2626; }
+  &.green  { color: #059669; }
+  &.indigo { color: #4338ca; }
+}
+
+/* Charts */
+.chart-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.5rem;
+}
+
+.chart-panel {
+  background: var(--bg-secondary, #fff); border: 1px solid var(--border-color, #e8edf2);
+  border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  &.wide { grid-column: 1 / -1; }
+}
+
+.chart-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0.9rem 1.25rem; border-bottom: 1px solid var(--border-color, #f1f5f9);
+  font-size: 0.9rem; font-weight: 600; color: var(--text-main, #1e293b);
+  background: var(--bg-primary, #fafafa);
+}
+
+.chart-body { padding: 1.25rem; height: 240px; }
+
+.btn-export {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  background: #6366f1; color: white; border: none; border-radius: 7px;
+  padding: 0.4rem 0.9rem; font-size: 0.78rem; font-weight: 600; cursor: pointer;
+  transition: background 0.15s;
+  &:hover { background: #4f46e5; }
+  &.green { background: #059669; &:hover { background: #047857; } }
+  .ic { width: 13px; height: 13px; }
+}
+
+/* Temperatura */
+.breakdown-panel {
+  background: var(--bg-secondary, #fff); border: 1px solid var(--border-color, #e8edf2);
+  border-radius: 12px; margin-bottom: 1.5rem; overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.temp-row { display: flex; gap: 1rem; padding: 1.5rem 1.25rem; }
+
+.temp-item {
+  flex: 1; border-radius: 10px; padding: 1.25rem; text-align: center;
+  display: flex; flex-direction: column; gap: 0.3rem;
+  .temp-icon { font-size: 1.75rem; }
+  .temp-n    { font-size: 2rem; font-weight: 800; }
+  .temp-lbl  { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+  &.hot  { background: #fef2f2; .temp-n { color: #dc2626; } .temp-lbl { color: #dc2626; } }
+  &.warm { background: #fffbeb; .temp-n { color: #d97706; } .temp-lbl { color: #d97706; } }
+  &.cold { background: #f0fdfa; .temp-n { color: #0f766e; } .temp-lbl { color: #0f766e; } }
+}
+
+/* Tabelas */
+.table-panel {
+  background: var(--bg-secondary, #fff); border: 1px solid var(--border-color, #e8edf2);
+  border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+}
+
+.report-table {
+  width: 100%; border-collapse: collapse;
+  th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color, #f1f5f9); font-size: 0.85rem; }
+  th { font-weight: 600; color: var(--text-main); background: var(--bg-primary, #fafafa); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td { color: var(--text-muted); }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(99,102,241,0.03); }
+}
+
+.agent-name { color: var(--text-main) !important; font-weight: 500; }
+.center     { text-align: center !important; }
+.no-data-cell { text-align: center; color: var(--text-muted); padding: 2rem !important; }
+
+.badge-num {
+  display: inline-block; padding: 0.15rem 0.6rem; border-radius: 20px; font-weight: 700; font-size: 0.85rem;
+  &.blue  { background: #eff6ff; color: #2563eb; }
+  &.red   { background: #fef2f2; color: #dc2626; }
+  &.green { background: #ecfdf5; color: #059669; }
+}
+
+.rate { padding: 0.2rem 0.5rem; border-radius: 6px; font-weight: 700; font-size: 0.82rem;
+  &.rate-good { background: #ecfdf5; color: #059669; }
+  &.rate-mid  { background: #fffbeb; color: #d97706; }
+  &.rate-low  { background: #f1f5f9; color: #64748b; }
+}
+
+/* Tags tab */
+.tags-layout { display: grid; grid-template-columns: 240px 1fr; gap: 1rem; }
+
+.tags-sidebar {
+  background: var(--bg-secondary, #fff); border: 1px solid var(--border-color, #e8edf2);
+  border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  height: fit-content;
+}
+
+.sidebar-head {
+  padding: 0.9rem 1rem; font-size: 0.75rem; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--text-muted, #94a3b8);
+  border-bottom: 1px solid var(--border-color, #f1f5f9);
+  background: var(--bg-primary, #fafafa);
+}
+
+.tag-item {
+  display: flex; align-items: center; gap: 0.6rem;
+  padding: 0.65rem 1rem; cursor: pointer;
+  border-bottom: 1px solid var(--border-color, #f8fafc);
+  transition: background 0.15s;
+  &:hover { background: rgba(99,102,241,0.04); }
+  &.active { background: rgba(99,102,241,0.08); }
+}
+
+.tag-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.tag-name { flex: 1; font-size: 0.85rem; color: var(--text-main); font-weight: 500; }
+.tag-count { font-size: 0.75rem; font-weight: 700; color: var(--text-muted); background: var(--bg-primary, #f1f5f9); padding: 0.1rem 0.45rem; border-radius: 10px; }
+
+.no-tags { padding: 1rem; font-size: 0.82rem; color: var(--text-muted); text-align: center; }
+
+.tags-content { background: var(--bg-secondary, #fff); border: 1px solid var(--border-color, #e8edf2); border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+
+.tag-badge { display: inline-block; padding: 0.2rem 0.7rem; border-radius: 20px; color: white; font-size: 0.82rem; font-weight: 700; }
+.export-group { display: flex; gap: 0.5rem; }
+
+.temp-badge {
+  display: inline-block; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.72rem; font-weight: 700;
+  &.quente { background: #fef2f2; color: #dc2626; }
+  &.morno  { background: #fffbeb; color: #d97706; }
+  &.frio   { background: #f0fdfa; color: #0f766e; }
+}
+
+/* Skeleton */
+.skeleton-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; animation: pulse 1.4s infinite; }
+.skel { height: 120px; background: var(--bg-secondary, #e5e7eb); border-radius: 12px; }
+@keyframes pulse { 0%, 100% { opacity: 0.5; } 50% { opacity: 1; } }
+
+@media (max-width: 1100px) {
+  .kpi-row    { grid-template-columns: repeat(2, 1fr); }
+  .chart-row  { grid-template-columns: 1fr; }
+  .tags-layout { grid-template-columns: 1fr; }
+}
+</style>

@@ -156,6 +156,11 @@ const router = createRouter({
           path: 'suporte',
           name: 'suporte',
           component: () => import('../views/Support.vue')
+        },
+        {
+          path: 'relatorios',
+          name: 'relatorios',
+          component: () => import('../views/Reports.vue')
         }
       ]
     },

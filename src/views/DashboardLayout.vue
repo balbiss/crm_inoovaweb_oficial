@@ -46,7 +46,8 @@ import {
   Bell,
   HelpCircle,
   CalendarDays,
-  Badge
+  Badge,
+  TrendingUp
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -427,6 +428,11 @@ const handleLogout = () => {
         <router-link to="/funil" class="nav-item">
           <Kanban class="icon" />
           <span>Funil de Vendas</span>
+        </router-link>
+
+        <router-link v-if="isAdminOrEmpresa" to="/relatorios" class="nav-item" active-class="active">
+          <TrendingUp class="icon" />
+          <span>Relatórios</span>
         </router-link>
 
         <div class="nav-section">
