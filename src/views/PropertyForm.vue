@@ -18,7 +18,7 @@ const form = ref({
   iptu_condition: 'Isento', iptu_value: '',
   auth_start_date: '', auth_end_date: '', exclusivity: false,
   built_area: '', total_area: '', suites: '', bedrooms: '', bathrooms: '', parking_spots: '',
-  price: '', title: ''
+  price: '', title: '', status: 'Disponível'
 })
 
 const isSubmitting = ref(false)
@@ -192,6 +192,16 @@ const submitForm = async () => {
               <div class="input-group">
                 <label>Preço de Venda/Locação *</label>
                 <input type="text" v-model="form.price" placeholder="R$ 0,00" required>
+              </div>
+              <div class="input-group">
+                <label>Status de Disponibilidade *</label>
+                <select v-model="form.status" required>
+                  <option value="Disponível">Disponível</option>
+                  <option value="Vendido">Vendido</option>
+                  <option value="Alugado">Alugado</option>
+                  <option value="Suspenso">Suspenso</option>
+                  <option value="Em Análise">Em Análise</option>
+                </select>
               </div>
             </div>
           </section>

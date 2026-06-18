@@ -271,8 +271,10 @@ const submitForm = async () => {
           <div class="input-group">
             <label>Status Comercial *</label>
             <select v-model="form.status" required>
-              <option value="Condomínio">Condomínio</option>
-              <option value="Lançamento">Lançamento</option>
+              <option value="Em Lançamento">Em Lançamento</option>
+              <option value="Em Obras">Em Obras</option>
+              <option value="Pronto para Morar">Pronto para Morar</option>
+              <option value="Esgotado">Esgotado</option>
             </select>
           </div>
 
