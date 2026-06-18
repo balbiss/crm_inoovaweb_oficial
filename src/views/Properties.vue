@@ -20,11 +20,13 @@ onMounted(() => {
 
 const selectedProperties = ref([])
 
+const NO_PHOTO = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='150' height='150' viewBox='0 0 150 150'><rect width='150' height='150' fill='%23f1f5f9'/><text x='75' y='68' text-anchor='middle' font-family='sans-serif' font-size='32'>🏠</text><text x='75' y='95' text-anchor='middle' font-family='sans-serif' font-size='11' fill='%2394a3b8'>Sem Foto</text></svg>`
+
 const getCoverImage = (property) => {
   if (property.photo_urls && property.photo_urls.length > 0) {
     return property.photo_urls[0]
   }
-  return 'https://via.placeholder.com/150x150?text=Sem+Foto'
+  return NO_PHOTO
 }
 
 const openMap = (property) => {
