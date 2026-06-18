@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 
+const OWNER_ROLES = ['empresa', 'admin']
+
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
@@ -97,21 +99,6 @@ const router = createRouter({
           component: () => import('../views/Appointments.vue')
         },
         {
-          path: 'agentes',
-          name: 'agentes',
-          component: () => import('../views/Agents.vue')
-        },
-        {
-          path: 'agentes/novo',
-          name: 'agentes_novo',
-          component: () => import('../views/AgentForm.vue')
-        },
-        {
-          path: 'agentes/:id/editar',
-          name: 'agentes_editar',
-          component: () => import('../views/AgentForm.vue')
-        },
-        {
           path: 'agendamentos/novo',
           name: 'agendamentos_novo',
           component: () => import('../views/AppointmentForm.vue')
@@ -121,35 +108,60 @@ const router = createRouter({
           name: 'agendamentos_editar',
           component: () => import('../views/AppointmentForm.vue')
         },
+        // Rotas exclusivas do dono (empresa/admin)
         {
-          path: 'funil',
-          name: 'funil',
-          component: () => import('../views/Kanban.vue')
+          path: 'agentes',
+          name: 'agentes',
+          component: () => import('../views/Agents.vue'),
+          meta: { requiresOwner: true }
+        },
+        {
+          path: 'agentes/novo',
+          name: 'agentes_novo',
+          component: () => import('../views/AgentForm.vue'),
+          meta: { requiresOwner: true }
+        },
+        {
+          path: 'agentes/:id/editar',
+          name: 'agentes_editar',
+          component: () => import('../views/AgentForm.vue'),
+          meta: { requiresOwner: true }
         },
         {
           path: 'settings/inboxes',
           name: 'SettingsInboxes',
-          component: () => import('../views/SettingsInboxes.vue')
-        },
-        {
-          path: 'settings/inboxes/:id',
-          name: 'settings_inbox_detail',
-          component: () => import('../views/SettingsInboxDetail.vue')
-        },
-        {
-          path: 'settings/account',
-          name: 'SettingsAccount',
-          component: () => import('../views/settings/Account.vue')
-        },
-        {
-          path: 'settings/tags',
-          name: 'SettingsTags',
-          component: () => import('../views/settings/Tags.vue')
+          component: () => import('../views/SettingsInboxes.vue'),
+          meta: { requiresOwner: true }
         },
         {
           path: 'settings/inboxes/new',
           name: 'settings_inboxes_new',
-          component: () => import('../views/NewInbox.vue')
+          component: () => import('../views/NewInbox.vue'),
+          meta: { requiresOwner: true }
+        },
+        {
+          path: 'settings/inboxes/:id',
+          name: 'settings_inbox_detail',
+          component: () => import('../views/SettingsInboxDetail.vue'),
+          meta: { requiresOwner: true }
+        },
+        {
+          path: 'settings/account',
+          name: 'SettingsAccount',
+          component: () => import('../views/settings/Account.vue'),
+          meta: { requiresOwner: true }
+        },
+        {
+          path: 'settings/tags',
+          name: 'SettingsTags',
+          component: () => import('../views/settings/Tags.vue'),
+          meta: { requiresOwner: true }
+        },
+        // Rotas abertas a todos
+        {
+          path: 'funil',
+          name: 'funil',
+          component: () => import('../views/Kanban.vue')
         },
         {
           path: 'suporte',
@@ -196,20 +208,35 @@ const router = createRouter({
   ]
 })
 
-router.beforeEach((to, from, next) => {
+router.beforeEach((to, _from, next) => {
   const isAuthenticated = !!localStorage.getItem('auth_token')
   let user = null
   try {
     user = JSON.parse(localStorage.getItem('user'))
   } catch (e) {}
 
-  if (to.name !== 'login' && to.name !== 'register' && to.name !== 'forgot-password' && to.name !== 'reset-password' && !isAuthenticated) {
-    next({ name: 'login' })
-  } else if (to.path.startsWith('/admin') && (!user || user.role !== 'admin')) {
-    next({ name: 'dashboard' }) // Redireciona usuários não-admin para o painel normal
-  } else {
-    next()
+  // Rota pública: não precisa de autenticação
+  const publicRoutes = ['login', 'register', 'forgot-password', 'reset-password']
+  if (publicRoutes.includes(to.name)) {
+    return next()
   }
+
+  // Não autenticado → login
+  if (!isAuthenticated) {
+    return next({ name: 'login' })
+  }
+
+  // Área /admin: apenas usuários com role 'admin'
+  if (to.path.startsWith('/admin') && (!user || user.role !== 'admin')) {
+    return next({ name: 'dashboard' })
+  }
+
+  // Rotas com requiresOwner: apenas empresa ou admin
+  if (to.meta?.requiresOwner && user && !OWNER_ROLES.includes(user.role)) {
+    return next({ name: 'dashboard' })
+  }
+
+  next()
 })
 
 export default router

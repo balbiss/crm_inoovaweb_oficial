@@ -9,13 +9,13 @@ import { usePropertiesStore } from '../store/properties'
 import { useCondominiumsStore } from '../store/condominiums'
 import { useAppointmentsStore } from '../store/appointments'
 import { useAgentsStore } from '../store/agents'
-import { 
-  Search, 
-  Inbox, 
-  MessageCircle, 
-  Hash, 
-  Tag, 
-  BarChart2, 
+import {
+  Search,
+  Inbox,
+  MessageCircle,
+  Hash,
+  Tag,
+  BarChart2,
   Settings,
   ChevronDown,
   Users,
@@ -24,19 +24,11 @@ import {
   Kanban,
   Briefcase,
   User,
-  Code,
-  RefreshCw,
-  Bot,
-  Calendar,
-  MessageSquareQuote,
-  Blocks,
-  Workflow,
   Keyboard,
   Palette,
   FileText,
   ScrollText,
   Power,
-  ChevronUp,
   Sun,
   Moon,
   Monitor,
@@ -51,7 +43,7 @@ import {
 } from 'lucide-vue-next'
 
 const router = useRouter()
-const route = useRoute()
+useRoute()
 const isSettingsOpen = ref(false)
 const showUserMenu = ref(false)
 const autoOffline = ref(false)
@@ -245,7 +237,7 @@ const handlePaletteKeydown = (e) => {
 }
 
 const handleVisibilityChange = () => {
-  if (document.visibilityState === 'visible' && isAdminOrEmpresa.value) {
+  if (document.visibilityState === 'visible') {
     fetchNotifications()
     if (!notificationInterval) {
       notificationInterval = setInterval(fetchNotifications, 10000)
@@ -273,11 +265,9 @@ onMounted(() => {
   const savedTheme = localStorage.getItem('theme') || 'system'
   applyTheme(savedTheme)
 
-  if (isAdminOrEmpresa.value) {
-    fetchNotifications()
-    notificationInterval = setInterval(fetchNotifications, 10000)
-    document.addEventListener('visibilitychange', handleVisibilityChange)
-  }
+  fetchNotifications()
+  notificationInterval = setInterval(fetchNotifications, 10000)
+  document.addEventListener('visibilitychange', handleVisibilityChange)
 
   fetchTags()
   window.addEventListener('tags-updated', fetchTags)
@@ -305,7 +295,8 @@ const handleLeadAtribuido = (e) => {
     didOpen: () => {
       // Som de notificação
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)()
+        const AudioCtx = window.AudioContext || window['webkitAudioContext']
+        const ctx = new AudioCtx()
         const osc = ctx.createOscillator()
         const gain = ctx.createGain()
         osc.connect(gain)
@@ -380,7 +371,7 @@ const handleLogout = () => {
           <input type="text" placeholder="Pesquisar contatos..." />
         </div>
 
-        <div class="notifications-wrapper" v-if="isAdminOrEmpresa">
+        <div class="notifications-wrapper">
           <button class="icon-btn" @click="toggleNotifications">
             <Bell class="icon" />
             <span v-if="unreadCount > 0" class="notification-badge">{{ unreadCount }}</span>
@@ -459,7 +450,7 @@ const handleLogout = () => {
           <span>Agendamentos</span>
         </router-link>
 
-        <router-link to="/agentes" class="nav-item" active-class="active">
+        <router-link v-if="isAdminOrEmpresa" to="/agentes" class="nav-item" active-class="active">
           <Badge class="icon" />
           <span>Agentes</span>
         </router-link>
