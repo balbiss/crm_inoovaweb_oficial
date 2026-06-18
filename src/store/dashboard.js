@@ -18,6 +18,7 @@ export const useDashboardStore = defineStore('dashboard', {
         backgroundColor: ['#e5e7eb']
       }]
     },
+    todayLeads: [],
     isOwner: false,
     isLoading: false,
     isLoadedOnce: false
@@ -28,8 +29,9 @@ export const useDashboardStore = defineStore('dashboard', {
       if (!this.isLoadedOnce) this.isLoading = true
       try {
         const response = await api.get('/dashboard')
-        this.kpis    = response.data.kpis
-        this.isOwner = response.data.is_owner
+        this.kpis       = response.data.kpis
+        this.isOwner    = response.data.is_owner
+        this.todayLeads = response.data.today_assigned_leads || []
 
         const sourceData = response.data.leads_by_source || {}
         const labels = Object.keys(sourceData)

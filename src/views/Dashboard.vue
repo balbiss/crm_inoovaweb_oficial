@@ -4,18 +4,38 @@ import { useRouter } from 'vue-router'
 import {
   Users, Flame, ThermometerSun, Snowflake, Calendar, CalendarCheck,
   CalendarDays, MessageCircle, UserCheck, TrendingUp, BarChart2,
-  CheckCircle, Clock, ChevronRight, Handshake, Eye
+  CheckCircle, ChevronRight, Handshake, Phone, ArrowRight, Inbox
 } from 'lucide-vue-next'
 import { Doughnut } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, ArcElement, CategoryScale } from 'chart.js'
 import { useDashboardStore } from '../store/dashboard'
+import { useConversationsStore } from '../store/conversations'
 import { storeToRefs } from 'pinia'
 
 ChartJS.register(Title, Tooltip, Legend, ArcElement, CategoryScale)
 
 const router = useRouter()
 const store = useDashboardStore()
-const { kpis, leadsBySourceData, isLoading, isOwner } = storeToRefs(store)
+const conversationsStore = useConversationsStore()
+const { kpis, leadsBySourceData, isLoading, isOwner, todayLeads } = storeToRefs(store)
+
+const openConversation = (conversationId) => {
+  conversationsStore.setActiveConversation(conversationId)
+  router.push('/conversas')
+}
+
+const tempColor = (t) => {
+  if (!t) return { bg: '#f1f5f9', text: '#64748b', label: 'Sem temp.' }
+  const l = t.toLowerCase()
+  if (l === 'quente') return { bg: '#fef2f2', text: '#dc2626', label: 'Quente' }
+  if (l === 'morno')  return { bg: '#fffbeb', text: '#d97706', label: 'Morno'  }
+  return                     { bg: '#eff6ff', text: '#2563eb', label: 'Frio'   }
+}
+
+const kanbanLabel = (s) => {
+  const map = { lead: 'Novo Lead', visit: 'Visita Agendada', proposal: 'Proposta', won: 'Fechado' }
+  return map[s] || s || '—'
+}
 
 onMounted(() => store.fetchDashboard())
 
@@ -79,8 +99,51 @@ const funnelItems = computed(() => {
     </div>
 
     <template v-else>
+
+      <!-- Leads Atribuídos Hoje -->
+      <div class="section-label">
+        {{ isOwner ? 'Leads Chegaram Hoje' : 'Leads Atribuídos a Você Hoje' }}
+        <span class="today-count">{{ todayLeads.length }}</span>
+      </div>
+
+      <div v-if="todayLeads.length === 0" class="today-empty">
+        <Inbox class="today-empty-ic" />
+        <p>{{ isOwner ? 'Nenhuma conversa nova chegou hoje ainda.' : 'Nenhum lead foi atribuído a você hoje ainda.' }}</p>
+      </div>
+
+      <div v-else class="today-leads-grid">
+        <div
+          v-for="lead in todayLeads"
+          :key="lead.conversation_id"
+          class="today-lead-card"
+          @click="openConversation(lead.conversation_id)"
+        >
+          <div class="tlc-avatar">
+            {{ (lead.contact_name || '?')[0].toUpperCase() }}
+          </div>
+          <div class="tlc-body">
+            <div class="tlc-top">
+              <span class="tlc-name">{{ lead.contact_name }}</span>
+              <span class="tlc-badge" :style="{ background: tempColor(lead.temperature).bg, color: tempColor(lead.temperature).text }">
+                {{ tempColor(lead.temperature).label }}
+              </span>
+            </div>
+            <div class="tlc-phone" v-if="lead.contact_phone">
+              <Phone class="tlc-icon" /> {{ lead.contact_phone }}
+            </div>
+            <div class="tlc-intention" v-if="lead.intention">{{ lead.intention }}</div>
+            <div class="tlc-footer">
+              <span class="tlc-stage">{{ kanbanLabel(lead.kanban_status) }}</span>
+              <span class="tlc-agent" v-if="lead.assigned_to">→ {{ lead.assigned_to }}</span>
+              <span class="tlc-time">{{ new Date(lead.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) }}</span>
+            </div>
+          </div>
+          <ArrowRight class="tlc-arrow" />
+        </div>
+      </div>
+
       <!-- Row 1: Temperatura dos Leads -->
-      <div class="section-label">Termômetro de Leads</div>
+      <div class="section-label mt-section">Termômetro de Leads</div>
       <div class="grid-4">
         <div class="kpi-card accent-blue">
           <div class="kpi-left">
@@ -469,9 +532,168 @@ const funnelItems = computed(() => {
   50% { opacity: 1; }
 }
 
+/* Today's leads */
+.section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  .today-count {
+    background: #6366f1;
+    color: #fff;
+    font-size: 0.65rem;
+    font-weight: 700;
+    padding: 0.1rem 0.45rem;
+    border-radius: 20px;
+    letter-spacing: 0;
+  }
+}
+
+.today-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--bg-secondary, #fff);
+  border: 1px dashed var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.1rem 1.5rem;
+  color: var(--text-muted, #94a3b8);
+  font-size: 0.82rem;
+
+  .today-empty-ic { width: 22px; height: 22px; opacity: 0.4; flex-shrink: 0; }
+  p { margin: 0; }
+}
+
+.today-leads-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 0.75rem;
+}
+
+.today-lead-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.85rem;
+  background: var(--bg-secondary, #fff);
+  border: 1px solid var(--border-color, #e8edf2);
+  border-radius: 12px;
+  padding: 0.9rem 1rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+
+  &:hover {
+    border-color: #6366f1;
+    box-shadow: 0 4px 16px rgba(99,102,241,0.12);
+    transform: translateY(-1px);
+
+    .tlc-arrow { opacity: 1; transform: translateX(2px); }
+  }
+}
+
+.tlc-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tlc-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tlc-top {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.tlc-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text-main, #1e293b);
+}
+
+.tlc-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 20px;
+}
+
+.tlc-phone {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+
+  .tlc-icon { width: 12px; height: 12px; flex-shrink: 0; }
+}
+
+.tlc-intention {
+  font-size: 0.75rem;
+  color: var(--text-muted, #64748b);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tlc-footer {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.1rem;
+}
+
+.tlc-stage {
+  font-size: 0.68rem;
+  font-weight: 600;
+  background: var(--bg-primary, #f1f5f9);
+  color: #6366f1;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+}
+
+.tlc-agent {
+  font-size: 0.68rem;
+  color: #10b981;
+  font-weight: 500;
+}
+
+.tlc-time {
+  font-size: 0.68rem;
+  color: var(--text-muted, #94a3b8);
+  margin-left: auto;
+}
+
+.tlc-arrow {
+  width: 16px;
+  height: 16px;
+  color: #6366f1;
+  opacity: 0;
+  transition: all 0.15s;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
 /* Responsive */
 @media (max-width: 1100px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-2-3 { grid-template-columns: 1fr; }
+  .today-leads-grid { grid-template-columns: 1fr; }
 }
 </style>
