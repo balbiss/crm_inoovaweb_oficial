@@ -1,23 +1,26 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { Bar, Doughnut } from 'vue-chartjs'
 import { Chart as ChartJS, Title, Tooltip, Legend, BarElement, ArcElement, CategoryScale, LinearScale } from 'chart.js'
-import { Download, Users, TrendingUp, Tag, Calendar, RefreshCw, FileText, ChevronDown } from 'lucide-vue-next'
+import { Download, Users, TrendingUp, Tag, CalendarCheck, RefreshCw, FileText } from 'lucide-vue-next'
 import api from '../api'
 import Swal from 'sweetalert2'
 
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+const isOwner     = computed(() => ['empresa', 'admin'].includes(currentUser.role))
+
 ChartJS.register(Title, Tooltip, Legend, BarElement, ArcElement, CategoryScale, LinearScale)
 
-const activeTab   = ref('overview')
-const period      = ref('month')
-const startDate   = ref('')
-const endDate     = ref('')
-const isLoading   = ref(false)
-
-const overview    = ref(null)
-const agentsData  = ref([])
-const tagsData    = ref([])
-const selectedTag = ref(null)
+const activeTab          = ref('appointments')
+const period             = ref('month')
+const startDate          = ref('')
+const endDate            = ref('')
+const isLoading          = ref(false)
+const overview           = ref(null)
+const agentsData         = ref([])
+const tagsData           = ref([])
+const selectedTag        = ref(null)
+const appointmentsReport = ref(null)
 
 const periodOptions = [
   { value: 'today',  label: 'Hoje' },
@@ -28,10 +31,7 @@ const periodOptions = [
 
 const periodParams = computed(() => {
   const p = { period: period.value }
-  if (period.value === 'custom') {
-    p.start_date = startDate.value
-    p.end_date   = endDate.value
-  }
+  if (period.value === 'custom') { p.start_date = startDate.value; p.end_date = endDate.value }
   return p
 })
 
@@ -40,9 +40,8 @@ const fetchOverview = async () => {
   try {
     const r = await api.get('/reports/overview', { params: periodParams.value })
     overview.value = r.data
-  } catch (e) {
-    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar visão geral.', showConfirmButton: false, timer: 3000 })
-  } finally { isLoading.value = false }
+  } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar visão geral.', showConfirmButton: false, timer: 3000 }) }
+  finally { isLoading.value = false }
 }
 
 const fetchAgents = async () => {
@@ -50,9 +49,8 @@ const fetchAgents = async () => {
   try {
     const r = await api.get('/reports/by_agent', { params: periodParams.value })
     agentsData.value = r.data.agents || []
-  } catch (e) {
-    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar relatório de corretores.', showConfirmButton: false, timer: 3000 })
-  } finally { isLoading.value = false }
+  } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar corretores.', showConfirmButton: false, timer: 3000 }) }
+  finally { isLoading.value = false }
 }
 
 const fetchTags = async () => {
@@ -61,9 +59,28 @@ const fetchTags = async () => {
     const r = await api.get('/reports/by_tag')
     tagsData.value = r.data.tags || []
     if (tagsData.value.length && !selectedTag.value) selectedTag.value = tagsData.value[0]
-  } catch (e) {
-    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar etiquetas.', showConfirmButton: false, timer: 3000 })
-  } finally { isLoading.value = false }
+  } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar etiquetas.', showConfirmButton: false, timer: 3000 }) }
+  finally { isLoading.value = false }
+}
+
+const fetchAppointments = async () => {
+  isLoading.value = true
+  try {
+    const r = await api.get('/appointments/report', { params: periodParams.value })
+    appointmentsReport.value = r.data
+  } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao carregar agendamentos.', showConfirmButton: false, timer: 3000 }) }
+  finally { isLoading.value = false }
+}
+
+const downloadBlob = (r, fallbackName) => {
+  const url  = window.URL.createObjectURL(new Blob([r.data], { type: 'text/csv' }))
+  const link = document.createElement('a')
+  link.href  = url
+  const disp = r.headers['content-disposition'] || ''
+  link.setAttribute('download', disp.match(/filename="?([^"]+)"?/)?.[1] || fallbackName)
+  document.body.appendChild(link); link.click(); link.remove()
+  window.URL.revokeObjectURL(url)
+  Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'CSV exportado!', showConfirmButton: false, timer: 2500 })
 }
 
 const exportCSV = async (type, tagId = null) => {
@@ -71,30 +88,52 @@ const exportCSV = async (type, tagId = null) => {
     const params = { ...periodParams.value, type }
     if (tagId) params.tag_id = tagId
     const r = await api.get('/reports/export', { params, responseType: 'blob' })
-    const url  = window.URL.createObjectURL(new Blob([r.data], { type: 'text/csv' }))
-    const link = document.createElement('a')
-    link.href  = url
-    const disp = r.headers['content-disposition'] || ''
-    link.setAttribute('download', disp.match(/filename="?([^"]+)"?/)?.[1] || `relatorio_${type}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    link.remove()
-    window.URL.revokeObjectURL(url)
-    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'CSV exportado!', showConfirmButton: false, timer: 2500 })
-  } catch (e) {
-    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao exportar.', showConfirmButton: false, timer: 3000 })
-  }
+    downloadBlob(r, `relatorio_${type}.csv`)
+  } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao exportar.', showConfirmButton: false, timer: 3000 }) }
+}
+
+const exportAppointments = async () => {
+  try {
+    const r = await api.get('/appointments/export', { params: periodParams.value, responseType: 'blob' })
+    downloadBlob(r, 'agendamentos.csv')
+  } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao exportar.', showConfirmButton: false, timer: 3000 }) }
 }
 
 const loadTab = () => {
-  if (activeTab.value === 'overview') fetchOverview()
-  else if (activeTab.value === 'agents') fetchAgents()
-  else if (activeTab.value === 'tags') fetchTags()
+  if (activeTab.value === 'overview')      fetchOverview()
+  else if (activeTab.value === 'agents')   fetchAgents()
+  else if (activeTab.value === 'tags')     fetchTags()
+  else if (activeTab.value === 'appointments') fetchAppointments()
 }
 
 watch(activeTab, loadTab)
 watch(period, () => { if (period.value !== 'custom') loadTab() })
-onMounted(loadTab)
+
+const countdown    = ref(30)
+const lastUpdated  = ref('')
+const justRefreshed = ref(false)
+let autoRefreshTimer = null
+let countdownTimer   = null
+
+const markRefreshed = () => {
+  const now = new Date()
+  lastUpdated.value = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  justRefreshed.value = true
+  setTimeout(() => { justRefreshed.value = false }, 1200)
+}
+
+const loadTabWithFeedback = () => { loadTab(); countdown.value = 30; markRefreshed() }
+
+onMounted(() => {
+  loadTab()
+  markRefreshed()
+  autoRefreshTimer = setInterval(loadTabWithFeedback, 30000)
+  countdownTimer   = setInterval(() => { if (countdown.value > 0) countdown.value-- }, 1000)
+})
+onUnmounted(() => {
+  clearInterval(autoRefreshTimer)
+  clearInterval(countdownTimer)
+})
 
 // Chart data
 const funnelChart = computed(() => {
@@ -157,21 +196,28 @@ const donutOptions = {
           <input type="date" v-model="endDate" class="date-input" />
           <button class="btn-apply" @click="loadTab">Aplicar</button>
         </div>
-        <button class="btn-refresh" @click="loadTab" :disabled="isLoading">
+        <span v-if="lastUpdated" class="last-updated">
+          <RefreshCw class="ic" :class="{ spinning: isLoading }" /> atualizado às {{ lastUpdated }}
+        </span>
+        <button class="btn-refresh" @click="loadTabWithFeedback" :disabled="isLoading">
           <RefreshCw class="ic" :class="{ spinning: isLoading }" />
+          <span class="countdown">{{ countdown }}s</span>
         </button>
       </div>
     </div>
 
     <!-- Tabs -->
     <div class="tabs">
-      <button :class="['tab', { active: activeTab === 'overview' }]" @click="activeTab = 'overview'">
+      <button :class="['tab', { active: activeTab === 'appointments' }]" @click="activeTab = 'appointments'">
+        <CalendarCheck class="ic" /> Agendamentos
+      </button>
+      <button v-if="isOwner" :class="['tab', { active: activeTab === 'overview' }]" @click="activeTab = 'overview'">
         <TrendingUp class="ic" /> Visão Geral
       </button>
-      <button :class="['tab', { active: activeTab === 'agents' }]" @click="activeTab = 'agents'">
+      <button v-if="isOwner" :class="['tab', { active: activeTab === 'agents' }]" @click="activeTab = 'agents'">
         <Users class="ic" /> Por Corretor
       </button>
-      <button :class="['tab', { active: activeTab === 'tags' }]" @click="activeTab = 'tags'">
+      <button v-if="isOwner" :class="['tab', { active: activeTab === 'tags' }]" @click="activeTab = 'tags'">
         <Tag class="ic" /> Por Etiqueta
       </button>
     </div>
@@ -183,7 +229,7 @@ const donutOptions = {
 
     <!-- ===== OVERVIEW ===== -->
     <template v-else-if="activeTab === 'overview' && overview">
-      <div class="kpi-row">
+      <div :class="['kpi-row', { refreshed: justRefreshed }]">
         <div class="kpi-card">
           <div class="kpi-top">
             <span class="kpi-label">Total de Leads</span>
@@ -356,6 +402,91 @@ const donutOptions = {
       </div>
     </template>
 
+    <!-- ===== AGENDAMENTOS ===== -->
+    <template v-else-if="activeTab === 'appointments' && appointmentsReport">
+      <!-- KPIs de status -->
+      <div :class="['kpi-row', { refreshed: justRefreshed }]">
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Total</span></div>
+          <div class="kpi-val">{{ appointmentsReport.total }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Pendentes</span></div>
+          <div class="kpi-val" style="color:#f59e0b">{{ appointmentsReport.by_status.pending }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Realizados</span></div>
+          <div class="kpi-val green">{{ appointmentsReport.by_status.completed }}</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-top"><span class="kpi-label">Cancelados</span></div>
+          <div class="kpi-val red">{{ appointmentsReport.by_status.cancelled }}</div>
+        </div>
+      </div>
+
+      <!-- Por corretor (só owner) -->
+      <div class="table-panel" v-if="isOwner && appointmentsReport.by_agent?.length" style="margin-bottom:1rem">
+        <div class="chart-head">Agendamentos por Corretor</div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Corretor</th>
+              <th class="center">Total</th>
+              <th class="center">Realizados</th>
+              <th class="center">Taxa</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="a in appointmentsReport.by_agent" :key="a.id">
+              <td class="agent-name">{{ a.name }}</td>
+              <td class="center"><span class="badge-num blue">{{ a.total }}</span></td>
+              <td class="center"><span class="badge-num green">{{ a.done }}</span></td>
+              <td class="center">
+                <span :class="['rate', a.total > 0 && (a.done/a.total) >= 0.5 ? 'rate-good' : 'rate-mid']">
+                  {{ a.total > 0 ? ((a.done / a.total) * 100).toFixed(0) : 0 }}%
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Lista completa -->
+      <div class="table-panel">
+        <div class="chart-head">
+          Lista de Agendamentos
+          <button class="btn-export" @click="exportAppointments"><Download class="ic" /> Exportar CSV</button>
+        </div>
+        <table class="report-table">
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Horário</th>
+              <th>Cliente</th>
+              <th>Imóvel</th>
+              <th v-if="isOwner">Corretor</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="!appointmentsReport.appointments?.length">
+              <td :colspan="isOwner ? 6 : 5" class="no-data-cell">Nenhum agendamento no período.</td>
+            </tr>
+            <tr v-for="a in appointmentsReport.appointments" :key="a.id">
+              <td>{{ a.appointment_date ? new Date(a.appointment_date).toLocaleDateString('pt-BR') : '—' }}</td>
+              <td>{{ a.start_time || '—' }} {{ a.end_time ? '– ' + a.end_time : '' }}</td>
+              <td class="agent-name">{{ a.contact?.name || a.contact?.phone || '—' }}</td>
+              <td>{{ a.property?.title || '—' }}</td>
+              <td v-if="isOwner">{{ a.agent || '—' }}</td>
+              <td>
+                <span :class="['status-badge', a.status?.toLowerCase()]">{{ a.status || '—' }}</span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </template>
+
   </div>
 </template>
 
@@ -402,12 +533,28 @@ const donutOptions = {
   padding: 0.35rem 0.75rem; font-size: 0.82rem; cursor: pointer;
 }
 
+.last-updated {
+  display: flex; align-items: center; gap: 0.35rem;
+  font-size: 0.75rem; color: var(--text-muted, #94a3b8);
+  .ic { width: 12px; height: 12px; }
+}
+
 .btn-refresh {
   background: var(--bg-secondary, #fff); border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 8px; padding: 0.4rem; cursor: pointer; display: flex; align-items: center;
+  border-radius: 8px; padding: 0.4rem 0.7rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;
   color: var(--text-muted);
   &:disabled { opacity: 0.5; }
   .ic { width: 16px; height: 16px; }
+  .countdown { font-size: 0.75rem; font-weight: 600; color: #6366f1; min-width: 24px; }
+}
+
+.kpi-row.refreshed .kpi-card {
+  animation: flash-update 0.6s ease;
+}
+@keyframes flash-update {
+  0%   { box-shadow: 0 0 0 0 rgba(99,102,241,0); }
+  30%  { box-shadow: 0 0 0 4px rgba(99,102,241,0.25); }
+  100% { box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
 }
 
 .spinning { animation: spin 0.8s linear infinite; }
@@ -584,6 +731,14 @@ const donutOptions = {
   &.quente { background: #fef2f2; color: #dc2626; }
   &.morno  { background: #fffbeb; color: #d97706; }
   &.frio   { background: #f0fdfa; color: #0f766e; }
+}
+
+.status-badge {
+  display: inline-block; padding: 0.2rem 0.65rem; border-radius: 10px; font-size: 0.72rem; font-weight: 700;
+  &.pending, &.agendado   { background: #fffbeb; color: #d97706; }
+  &.confirmed, &.confirmado { background: #eff6ff; color: #2563eb; }
+  &.completed, &.realizado  { background: #ecfdf5; color: #059669; }
+  &.cancelled, &.cancelado  { background: #fef2f2; color: #dc2626; }
 }
 
 /* Skeleton */

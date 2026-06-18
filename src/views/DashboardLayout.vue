@@ -430,7 +430,7 @@ const handleLogout = () => {
           <span>Funil de Vendas</span>
         </router-link>
 
-        <router-link v-if="isAdminOrEmpresa" to="/relatorios" class="nav-item" active-class="active">
+        <router-link to="/relatorios" class="nav-item" active-class="active">
           <TrendingUp class="icon" />
           <span>Relatórios</span>
         </router-link>
