@@ -4,6 +4,7 @@ import { Plus, MoreHorizontal, User, Phone, X, AlertCircle } from '@lucide/vue'
 import api from '../api'
 import Swal from 'sweetalert2'
 import { useConversationsStore } from '../store/conversations'
+import { useContactsStore } from '../store/contacts'
 
 const columns = ref([
   { id: 'lead', name: 'Novos Leads', color: '#3b82f6', cards: [] },
@@ -16,6 +17,7 @@ const isLoading = ref(true)
 const showModal = ref(false)
 const targetColumnId = ref('lead')
 const store = useConversationsStore()
+const contactsStore = useContactsStore()
 
 const newContact = ref({
   first_name: '',
@@ -27,31 +29,31 @@ const newContact = ref({
   source: 'WhatsApp API'
 })
 
+const distributeContacts = (contacts) => {
+  columns.value.forEach(col => { col.cards = [] })
+  contacts.forEach(contact => {
+    const status = contact.status || 'lead'
+    const targetCol = columns.value.find(c => c.id === status) || columns.value[0]
+    targetCol.cards.push({
+      id: contact.id,
+      title: `${contact.first_name || contact.name || ''} ${contact.last_name || ''}`.trim(),
+      subtitle: contact.intention ? (contact.intention.startsWith('Visita:') ? contact.intention : `Intenção: ${contact.intention}`) : 'Sem pretensão definida',
+      phone: contact.phone || 'Sem telefone',
+      temperature: contact.temperature || 'Morno',
+      raw: contact
+    })
+  })
+}
+
 const fetchContacts = async (showLoading = true) => {
   if (showLoading) isLoading.value = true
   try {
-    const response = await api.get('/contacts')
-    const contacts = response.data
-
-    // Reset
-    columns.value.forEach(col => {
-      col.cards = []
-    })
-
-    // Distribute
-    contacts.forEach(contact => {
-      const status = contact.status || 'lead'
-      const targetCol = columns.value.find(c => c.id === status) || columns.value[0]
-      
-      targetCol.cards.push({
-        id: contact.id,
-        title: `${contact.first_name || contact.name || ''} ${contact.last_name || ''}`.trim(),
-        subtitle: contact.intention ? (contact.intention.startsWith('Visita:') ? contact.intention : `Intenção: ${contact.intention}`) : 'Sem pretensão definida',
-        phone: contact.phone || 'Sem telefone',
-        temperature: contact.temperature || 'Morno',
-        raw: contact
-      })
-    })
+    if (contactsStore.isLoadedOnce) {
+      distributeContacts(contactsStore.contacts)
+    } else {
+      await contactsStore.fetchContacts()
+      distributeContacts(contactsStore.contacts)
+    }
   } catch (error) {
     console.error('Error fetching contacts for Kanban:', error)
   } finally {

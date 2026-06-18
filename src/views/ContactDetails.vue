@@ -3,7 +3,6 @@ import { ref, onMounted, computed, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Search, ChevronDown, Activity, AtSign, Plus, X } from 'lucide-vue-next'
 import api from '../api'
-import axios from 'axios'
 import Swal from 'sweetalert2'
 
 const route = useRoute()
@@ -191,7 +190,7 @@ const closeNoteModal = () => {
 const saveNote = async () => {
   if (!newNote.value.trim()) return
   try {
-    const response = await axios.post(`http://localhost:3000/contacts/${route.params.id}/add_note`, {
+    const response = await api.post(`/contacts/${route.params.id}/add_note`, {
       content: newNote.value
     })
     

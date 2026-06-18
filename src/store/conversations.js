@@ -91,12 +91,11 @@ export const useConversationsStore = defineStore('conversations', {
         });
       }
 
-      // Apply Sort By
+      // Apply Sort By — spread to avoid mutating state.conversations in place
       if (state.sortBy === 'oldest') {
-        filtered = filtered.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
+        filtered = [...filtered].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
       } else {
-        // latest
-        filtered = filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+        filtered = [...filtered].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
       }
 
       return filtered

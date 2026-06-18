@@ -276,11 +276,6 @@ onMounted(() => {
   document.addEventListener('click', closeFilterPopover)
   store.setupWebSocket()
   scrollToBottom()
-  if (store.activeConversationId) {
-    fetchAiStatus()
-    clearInterval(aiStatusInterval.value)
-    aiStatusInterval.value = setInterval(fetchAiStatus, 15000)
-  }
 })
 
 onUnmounted(() => {

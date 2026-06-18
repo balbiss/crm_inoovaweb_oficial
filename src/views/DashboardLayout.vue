@@ -242,24 +242,39 @@ const handlePaletteKeydown = (e) => {
   }
 }
 
+const handleVisibilityChange = () => {
+  if (document.visibilityState === 'visible' && isAdminOrEmpresa.value) {
+    fetchNotifications()
+    if (!notificationInterval) {
+      notificationInterval = setInterval(fetchNotifications, 10000)
+    }
+  } else if (document.visibilityState === 'hidden') {
+    if (notificationInterval) {
+      clearInterval(notificationInterval)
+      notificationInterval = null
+    }
+  }
+}
+
 onMounted(() => {
   loadUser()
-  
-  // Preload Global Store Data for Instantaneous Navigation
-  inboxesStore.fetchInboxes()
-  contactsStore.fetchContacts()
-  propertiesStore.fetchProperties()
-  condominiumsStore.fetchCondominiums()
-  appointmentsStore.fetchAppointments()
-  agentsStore.fetchAgents()
+
+  // Only fetch stores if not already loaded
+  if (!inboxesStore.isLoadedOnce) inboxesStore.fetchInboxes()
+  if (!contactsStore.isLoadedOnce) contactsStore.fetchContacts()
+  if (!propertiesStore.isLoadedOnce) propertiesStore.fetchProperties()
+  if (!condominiumsStore.isLoadedOnce) condominiumsStore.fetchCondominiums()
+  if (!appointmentsStore.isLoadedOnce) appointmentsStore.fetchAppointments()
+  if (!agentsStore.isLoadedOnce) agentsStore.fetchAgents()
 
   window.addEventListener('keydown', handlePaletteKeydown)
   const savedTheme = localStorage.getItem('theme') || 'system'
   applyTheme(savedTheme)
-  
+
   if (isAdminOrEmpresa.value) {
     fetchNotifications()
     notificationInterval = setInterval(fetchNotifications, 10000)
+    document.addEventListener('visibilitychange', handleVisibilityChange)
   }
 
   fetchTags()
@@ -310,6 +325,7 @@ const handleLeadAtribuido = (e) => {
 onUnmounted(() => {
   window.removeEventListener('keydown', handlePaletteKeydown)
   if (notificationInterval) clearInterval(notificationInterval)
+  document.removeEventListener('visibilitychange', handleVisibilityChange)
   window.removeEventListener('tags-updated', fetchTags)
   window.removeEventListener('lead-atribuido', handleLeadAtribuido)
 })
