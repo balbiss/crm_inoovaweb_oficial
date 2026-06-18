@@ -35,8 +35,8 @@ const periodParams = computed(() => {
   return p
 })
 
-const fetchOverview = async () => {
-  isLoading.value = true
+const fetchOverview = async (silent = false) => {
+  if (!silent) isLoading.value = true
   try {
     const r = await api.get('/reports/overview', { params: periodParams.value })
     overview.value = r.data
@@ -44,8 +44,8 @@ const fetchOverview = async () => {
   finally { isLoading.value = false }
 }
 
-const fetchAgents = async () => {
-  isLoading.value = true
+const fetchAgents = async (silent = false) => {
+  if (!silent) isLoading.value = true
   try {
     const r = await api.get('/reports/by_agent', { params: periodParams.value })
     agentsData.value = r.data.agents || []
@@ -53,8 +53,8 @@ const fetchAgents = async () => {
   finally { isLoading.value = false }
 }
 
-const fetchTags = async () => {
-  isLoading.value = true
+const fetchTags = async (silent = false) => {
+  if (!silent) isLoading.value = true
   try {
     const r = await api.get('/reports/by_tag')
     tagsData.value = r.data.tags || []
@@ -63,8 +63,8 @@ const fetchTags = async () => {
   finally { isLoading.value = false }
 }
 
-const fetchAppointments = async () => {
-  isLoading.value = true
+const fetchAppointments = async (silent = false) => {
+  if (!silent) isLoading.value = true
   try {
     const r = await api.get('/appointments/report', { params: periodParams.value })
     appointmentsReport.value = r.data
@@ -99,41 +99,34 @@ const exportAppointments = async () => {
   } catch { Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao exportar.', showConfirmButton: false, timer: 3000 }) }
 }
 
-const loadTab = () => {
-  if (activeTab.value === 'overview')      fetchOverview()
-  else if (activeTab.value === 'agents')   fetchAgents()
-  else if (activeTab.value === 'tags')     fetchTags()
-  else if (activeTab.value === 'appointments') fetchAppointments()
+const loadTab = (silent = false) => {
+  if (activeTab.value === 'overview')          fetchOverview(silent)
+  else if (activeTab.value === 'agents')       fetchAgents(silent)
+  else if (activeTab.value === 'tags')         fetchTags(silent)
+  else if (activeTab.value === 'appointments') fetchAppointments(silent)
 }
 
-watch(activeTab, loadTab)
-watch(period, () => { if (period.value !== 'custom') loadTab() })
+watch(activeTab, () => loadTab(false))
+watch(period, () => { if (period.value !== 'custom') loadTab(false) })
 
-const countdown    = ref(30)
-const lastUpdated  = ref('')
+const lastUpdated   = ref('')
 const justRefreshed = ref(false)
 let autoRefreshTimer = null
-let countdownTimer   = null
 
-const markRefreshed = () => {
+const silentRefresh = () => {
+  loadTab(true)
   const now = new Date()
   lastUpdated.value = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
   justRefreshed.value = true
-  setTimeout(() => { justRefreshed.value = false }, 1200)
+  setTimeout(() => { justRefreshed.value = false }, 1000)
 }
 
-const loadTabWithFeedback = () => { loadTab(); countdown.value = 30; markRefreshed() }
-
 onMounted(() => {
-  loadTab()
-  markRefreshed()
-  autoRefreshTimer = setInterval(loadTabWithFeedback, 30000)
-  countdownTimer   = setInterval(() => { if (countdown.value > 0) countdown.value-- }, 1000)
+  loadTab(false)
+  lastUpdated.value = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+  autoRefreshTimer = setInterval(silentRefresh, 30000)
 })
-onUnmounted(() => {
-  clearInterval(autoRefreshTimer)
-  clearInterval(countdownTimer)
-})
+onUnmounted(() => clearInterval(autoRefreshTimer))
 
 // Chart data
 const funnelChart = computed(() => {
@@ -197,11 +190,10 @@ const donutOptions = {
           <button class="btn-apply" @click="loadTab">Aplicar</button>
         </div>
         <span v-if="lastUpdated" class="last-updated">
-          <RefreshCw class="ic" :class="{ spinning: isLoading }" /> atualizado às {{ lastUpdated }}
+          atualizado às {{ lastUpdated }}
         </span>
-        <button class="btn-refresh" @click="loadTabWithFeedback" :disabled="isLoading">
+        <button class="btn-refresh" @click="() => { loadTab(false); lastUpdated = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) }" :disabled="isLoading">
           <RefreshCw class="ic" :class="{ spinning: isLoading }" />
-          <span class="countdown">{{ countdown }}s</span>
         </button>
       </div>
     </div>
@@ -541,11 +533,10 @@ const donutOptions = {
 
 .btn-refresh {
   background: var(--bg-secondary, #fff); border: 1px solid var(--border-color, #e2e8f0);
-  border-radius: 8px; padding: 0.4rem 0.7rem; cursor: pointer; display: flex; align-items: center; gap: 0.4rem;
+  border-radius: 8px; padding: 0.4rem 0.5rem; cursor: pointer; display: flex; align-items: center;
   color: var(--text-muted);
   &:disabled { opacity: 0.5; }
   .ic { width: 16px; height: 16px; }
-  .countdown { font-size: 0.75rem; font-weight: 600; color: #6366f1; min-width: 24px; }
 }
 
 .kpi-row.refreshed .kpi-card {
