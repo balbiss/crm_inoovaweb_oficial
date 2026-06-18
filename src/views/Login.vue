@@ -6,6 +6,10 @@ import Swal from 'sweetalert2'
 import { brand } from '../config/brand'
 
 const router = useRouter()
+
+const words = brand.name.split(' ')
+const brandMain = words.slice(0, -1).join(' ')
+const brandAccent = words[words.length - 1]
 const email = ref('')
 const password = ref('')
 const isLoading = ref(false)
@@ -65,7 +69,7 @@ const handleLogin = async () => {
   <div class="auth-container">
     <div class="auth-card">
       <div class="auth-header">
-        <h1 class="logo">{{ brand.name }}</h1>
+        <h1 class="logo">{{ brandMain }}<span>{{ brandAccent }}</span></h1>
         <h2>Bem-vindo de volta</h2>
         <p>Acesse sua conta para gerenciar seus imóveis e leads.</p>
       </div>
