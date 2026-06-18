@@ -6,12 +6,13 @@ import { useConversationsStore } from '../store/conversations'
 
 import api from '../api'
 import Swal from 'sweetalert2'
+import { brand } from '../config/brand'
 
 const router = useRouter()
 const conversationsStore = useConversationsStore()
 
 const steps = ref([
-  { id: 1, title: 'Escolha o Canal', desc: 'Escolha o provedor que você deseja integrar com o Innovaweb.', active: true, completed: false },
+  { id: 1, title: 'Escolha o Canal', desc: `Escolha o provedor que você deseja integrar com o ${brand.name}.`, active: true, completed: false },
   { id: 2, title: 'Criar Caixa de Entrada', desc: 'Autenticar sua conta e criar uma caixa de entrada.', active: false, completed: false },
   { id: 3, title: 'Adicionar Agentes', desc: 'Adicionar agentes à caixa de entrada criada.', active: false, completed: false },
   { id: 4, title: 'Então!', desc: 'Está tudo pronto para começar!', active: false, completed: false },

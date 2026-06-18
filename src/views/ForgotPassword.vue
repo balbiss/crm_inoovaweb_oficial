@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
+import { brand } from '../config/brand'
 
 const router = useRouter()
 const email = ref('')
@@ -14,7 +15,7 @@ const handleForgotPassword = async () => {
   isLoading.value = true
   
   try {
-    await axios.post('http://localhost:3000/users/password', {
+    await axios.post(`${brand.apiUrl}/users/password`, {
       user: {
         email: email.value
       }

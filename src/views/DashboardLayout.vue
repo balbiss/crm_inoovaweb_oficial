@@ -170,8 +170,10 @@ const userDisplayName = () => {
   return (fn + ' ' + ln).trim() || currentUser.value.email || 'Usuário'
 }
 
+import { brand } from '../config/brand'
+
 const accountName = () => {
-  return currentUser.value.account_name || 'Innovaweb CRM'
+  return currentUser.value.account_name || brand.name
 }
 
 // Theme Command Palette State

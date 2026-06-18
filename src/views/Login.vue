@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
+import { brand } from '../config/brand'
 
 const router = useRouter()
 const email = ref('')
@@ -11,9 +12,9 @@ const isLoading = ref(false)
 
 const handleLogin = async () => {
   isLoading.value = true
-  
+
   try {
-    const response = await axios.post('http://localhost:3000/users/sign_in', {
+    const response = await axios.post(`${brand.apiUrl}/users/sign_in`, {
       user: {
         email: email.value,
         password: password.value
@@ -34,7 +35,7 @@ const handleLogin = async () => {
     await Swal.fire({
       icon: 'success',
       title: 'Login realizado!',
-      text: 'Bem-vindo de volta ao Innovaweb.',
+      text: `Bem-vindo de volta ao ${brand.name}.`,
       confirmButtonColor: '#2563eb',
       timer: 1500,
       showConfirmButton: false
@@ -64,7 +65,7 @@ const handleLogin = async () => {
   <div class="auth-container">
     <div class="auth-card">
       <div class="auth-header">
-        <h1 class="logo">Innova<span>web</span></h1>
+        <h1 class="logo">{{ brand.name }}</h1>
         <h2>Bem-vindo de volta</h2>
         <p>Acesse sua conta para gerenciar seus imóveis e leads.</p>
       </div>

@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
+import { brand } from '../config/brand'
 
 const router = useRouter()
 const companyName = ref('')
@@ -27,7 +28,7 @@ const handleRegister = async () => {
   
   isLoading.value = true
   try {
-    const response = await axios.post('http://localhost:3000/users', {
+    const response = await axios.post(`${brand.apiUrl}/users`, {
       user: {
         company_name: companyName.value,
         first_name: firstName.value,

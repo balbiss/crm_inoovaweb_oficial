@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
+import { brand } from '../config/brand'
 
 const router = useRouter()
 const route = useRoute()
@@ -41,7 +42,7 @@ const handleResetPassword = async () => {
   isLoading.value = true
   
   try {
-    const response = await axios.put('http://localhost:3000/users/password', {
+    const response = await axios.put(`${brand.apiUrl}/users/password`, {
       user: {
         reset_password_token: resetToken.value,
         password: password.value,
