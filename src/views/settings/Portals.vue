@@ -1,11 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Copy, Check, ExternalLink, Zap, Building2, Globe } from 'lucide-vue-next'
+import { Copy, Check, ChevronRight } from 'lucide-vue-next'
 import api from '../../api'
 
-const webhookUrls  = ref({})
-const copiedKey    = ref(null)
-const isLoading    = ref(true)
+const webhookUrls = ref({})
+const copiedKey   = ref(null)
+const isLoading   = ref(true)
 
 onMounted(async () => {
   try {
@@ -21,137 +21,179 @@ onMounted(async () => {
 const copy = async (key, url) => {
   await navigator.clipboard.writeText(url)
   copiedKey.value = key
-  setTimeout(() => { copiedKey.value = null }, 2000)
+  setTimeout(() => { copiedKey.value = null }, 2500)
 }
 
 const portals = [
   {
-    key:         'canal_pro',
-    name:        'Canal Pro',
-    color:       '#7c3aed',
-    bg:          '#f5f3ff',
-    description: 'Cole a URL abaixo em Configurações → Leads → Receber leads no CRM',
-    docsUrl:     'https://canalpro.com.br',
-    icon:        Zap,
+    key:        'canal_pro',
+    name:       'Canal Pro',
+    domain:     'canalpro.com.br',
+    color:      '#7B2FA2',
+    colorLight: '#F3E8FF',
+    gradient:   'linear-gradient(135deg, #7B2FA2 0%, #9333EA 100%)',
+    description:'Cole a URL abaixo em Configurações → Leads → Receber leads no CRM',
     howto: [
       'Acesse seu painel do Canal Pro',
       'Vá em Configurações → Leads → Receber leads no CRM',
       'No campo "Nome do CRM" escreva: VisitaIA CRM',
-      'Cole a URL abaixo no campo "URL de integração"',
+      'Cole a URL no campo "URL de integração"',
       'Clique em Salvar alterações',
     ]
   },
   {
-    key:         'zap',
-    name:        'ZAP Imóveis',
-    color:       '#d97706',
-    bg:          '#fffbeb',
-    description: 'Cole a URL abaixo na configuração de webhook do ZAP Imóveis',
-    docsUrl:     'https://zapimoveis.com.br',
-    icon:        Building2,
+    key:        'zap',
+    name:       'ZAP Imóveis',
+    domain:     'zapimoveis.com.br',
+    color:      '#E8590C',
+    colorLight: '#FFF3ED',
+    gradient:   'linear-gradient(135deg, #E8590C 0%, #F97316 100%)',
+    description:'Cole a URL abaixo no painel do Programa de Parceiros ZAP',
     howto: [
-      'Acesse o painel do ZAP Imóveis (Programa de Parceiros)',
+      'Acesse o Programa de Parceiros do ZAP Imóveis',
       'Vá em Integrações → Webhook de Leads',
-      'Cole a URL abaixo no campo de endpoint',
-      'Salve e envie um lead de teste',
+      'Cole a URL no campo de endpoint',
+      'Salve e clique em Enviar lead de teste',
     ]
   },
   {
-    key:         'viva_real',
-    name:        'Viva Real',
-    color:       '#0284c7',
-    bg:          '#f0f9ff',
-    description: 'Cole a URL abaixo na configuração de webhook do Viva Real',
-    docsUrl:     'https://vivareal.com.br',
-    icon:        Globe,
+    key:        'viva_real',
+    name:       'Viva Real',
+    domain:     'vivareal.com.br',
+    color:      '#0062CC',
+    colorLight: '#EFF6FF',
+    gradient:   'linear-gradient(135deg, #0062CC 0%, #2563EB 100%)',
+    description:'Cole a URL abaixo no painel de integrações do Viva Real',
     howto: [
       'Acesse o painel do Viva Real (mesmo login do ZAP)',
       'Vá em Integrações → Webhook de Leads',
-      'Cole a URL abaixo no campo de endpoint',
-      'Salve e envie um lead de teste',
+      'Cole a URL no campo de endpoint',
+      'Salve e clique em Enviar lead de teste',
     ]
   }
 ]
+
+const logoError = (e) => {
+  e.target.style.display = 'none'
+  e.target.nextElementSibling.style.display = 'flex'
+}
 </script>
 
 <template>
   <div class="portals-page">
     <div class="page-header">
       <h2>Portais Imobiliários</h2>
-      <p>Receba leads do Canal Pro, ZAP e Viva Real diretamente no CRM. A IA responde no WhatsApp automaticamente.</p>
+      <p>Receba leads do Canal Pro, ZAP e Viva Real direto no CRM. Quando um lead chega, a IA já responde no WhatsApp em segundos.</p>
     </div>
 
-    <div v-if="isLoading" class="loading">Carregando...</div>
+    <div v-if="isLoading" class="loading">
+      <div class="loading-spinner"></div>
+      <span>Carregando URLs...</span>
+    </div>
 
-    <div v-else class="portals-grid">
-      <div
-        v-for="portal in portals"
-        :key="portal.key"
-        class="portal-card"
-        :style="{ '--accent': portal.color, '--accent-bg': portal.bg }"
-      >
-        <div class="card-header">
-          <div class="portal-badge" :style="{ background: portal.bg }">
-            <component :is="portal.icon" :size="20" :style="{ color: portal.color }" />
+    <div v-else class="portals-list">
+      <div v-for="portal in portals" :key="portal.key" class="portal-card">
+
+        <!-- Card Header com logo real -->
+        <div class="card-top" :style="{ borderTopColor: portal.color }">
+          <div class="logo-area">
+            <img
+              :src="`https://logo.clearbit.com/${portal.domain}`"
+              :alt="portal.name"
+              class="brand-logo"
+              @error="logoError"
+            />
+            <!-- Fallback caso o logo não carregue -->
+            <div class="logo-fallback" :style="{ background: portal.gradient }" style="display:none">
+              <span>{{ portal.name[0] }}</span>
+            </div>
           </div>
-          <div>
+          <div class="portal-info">
             <h3>{{ portal.name }}</h3>
-            <p class="card-desc">{{ portal.description }}</p>
+            <p>{{ portal.description }}</p>
+          </div>
+          <div class="status-badge active">
+            <span class="dot"></span>
+            Pronto para usar
           </div>
         </div>
 
-        <!-- URL de webhook -->
-        <div class="webhook-box">
+        <!-- Webhook URL -->
+        <div class="webhook-section">
           <label>URL de integração (webhook)</label>
           <div class="url-row">
-            <input
-              readonly
-              :value="webhookUrls[portal.key] || 'Carregando...'"
-              class="url-input"
-              @click="$event.target.select()"
-            />
+            <div class="url-display">
+              <span class="url-protocol">https://</span>
+              <span class="url-path">{{ (webhookUrls[portal.key] || '').replace('https://', '') }}</span>
+            </div>
             <button
               class="btn-copy"
               :class="{ copied: copiedKey === portal.key }"
+              :style="copiedKey !== portal.key ? { background: portal.color } : {}"
               @click="copy(portal.key, webhookUrls[portal.key])"
             >
-              <Check v-if="copiedKey === portal.key" :size="15" />
-              <Copy v-else :size="15" />
-              {{ copiedKey === portal.key ? 'Copiado!' : 'Copiar' }}
+              <Check v-if="copiedKey === portal.key" :size="14" />
+              <Copy v-else :size="14" />
+              {{ copiedKey === portal.key ? 'Copiado!' : 'Copiar URL' }}
             </button>
           </div>
         </div>
 
-        <!-- Passo a passo -->
-        <div class="howto">
-          <p class="howto-title">Como configurar:</p>
-          <ol>
-            <li v-for="(step, i) in portal.howto" :key="i">{{ step }}</li>
-          </ol>
+        <!-- Steps + Flow -->
+        <div class="card-bottom">
+          <div class="howto-section">
+            <p class="section-title">Como configurar</p>
+            <div class="steps">
+              <div v-for="(step, i) in portal.howto" :key="i" class="step">
+                <div class="step-num" :style="{ background: portal.colorLight, color: portal.color }">{{ i + 1 }}</div>
+                <span>{{ step }}</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="flow-section">
+            <p class="section-title">O que acontece</p>
+            <div class="flow">
+              <div class="flow-step">
+                <div class="flow-icon" :style="{ background: portal.colorLight }">
+                  <img :src="`https://logo.clearbit.com/${portal.domain}`" class="flow-logo" />
+                </div>
+                <span>Lead no {{ portal.name }}</span>
+              </div>
+              <ChevronRight :size="16" class="flow-arrow" />
+              <div class="flow-step">
+                <div class="flow-icon" style="background: #F0FDF4">
+                  <span style="font-size:1.1rem">👤</span>
+                </div>
+                <span>Contato criado</span>
+              </div>
+              <ChevronRight :size="16" class="flow-arrow" />
+              <div class="flow-step">
+                <div class="flow-icon" style="background: #ECFDF5">
+                  <span style="font-size:1.1rem">⚡</span>
+                </div>
+                <span>IA responde no WhatsApp</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <!-- Flow visual -->
-        <div class="flow-badge">
-          <span>Lead no {{ portal.name }}</span>
-          <span class="arrow">→</span>
-          <span>CRM cria contato</span>
-          <span class="arrow">→</span>
-          <span>IA responde no WhatsApp ⚡</span>
-        </div>
       </div>
     </div>
 
-    <div class="info-box">
-      <strong>💡 Como funciona:</strong> Quando um lead preenche o formulário de interesse no portal,
-      ele é enviado automaticamente para o CRM via webhook. O contato é criado, a conversa aparece
-      no painel e — se o lead informou telefone — a IA envia uma mensagem no WhatsApp em segundos.
+    <div class="tip-box">
+      <div class="tip-icon">💡</div>
+      <div>
+        <strong>Dica:</strong> A IA só responde no WhatsApp se o lead informar o número de telefone.
+        ZAP e Viva Real às vezes ocultam o telefone — nesses casos o lead aparece no painel para follow-up manual.
+      </div>
     </div>
   </div>
 </template>
 
 <style scoped>
 .portals-page {
-  max-width: 900px;
+  max-width: 860px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
 }
@@ -159,177 +201,322 @@ const portals = [
 .page-header {
   margin-bottom: 2rem;
 }
-
 .page-header h2 {
   font-size: 1.4rem;
   font-weight: 700;
   color: #111827;
-  margin: 0 0 0.4rem 0;
+  margin: 0 0 0.4rem;
 }
-
 .page-header p {
   color: #6b7280;
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   margin: 0;
+  max-width: 600px;
+  line-height: 1.6;
 }
 
+/* Loading */
 .loading {
-  text-align: center;
-  color: #6b7280;
-  padding: 3rem;
-}
-
-.portals-grid {
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 4rem;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+.loading-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid #e5e7eb;
+  border-top-color: #6366f1;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Portal Cards */
+.portals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
   margin-bottom: 1.5rem;
 }
 
 .portal-card {
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  padding: 1.5rem;
-  border-left: 4px solid var(--accent);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  transition: box-shadow 0.2s;
+}
+.portal-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
 }
 
-.card-header {
-  display: flex;
-  align-items: flex-start;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.portal-badge {
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
+/* Top section */
+.card-top {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 1rem;
+  padding: 1.25rem 1.5rem;
+  border-top: 3px solid transparent;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+.logo-area {
   flex-shrink: 0;
 }
 
-.card-header h3 {
-  margin: 0 0 0.2rem 0;
-  font-size: 1rem;
+.brand-logo {
+  width: 56px;
+  height: 56px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  padding: 4px;
+}
+
+.logo-fallback {
+  width: 56px;
+  height: 56px;
+  border-radius: 10px;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.4rem;
+  font-weight: 900;
+  color: white;
+  letter-spacing: -1px;
+}
+
+.portal-info {
+  flex: 1;
+}
+.portal-info h3 {
+  margin: 0 0 0.2rem;
+  font-size: 1.05rem;
   font-weight: 700;
   color: #111827;
 }
-
-.card-desc {
+.portal-info p {
   margin: 0;
   font-size: 0.82rem;
   color: #6b7280;
 }
 
-.webhook-box {
-  margin-bottom: 1.25rem;
-}
-
-.webhook-box label {
-  display: block;
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.75rem;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 999px;
   font-size: 0.78rem;
   font-weight: 600;
-  color: #374151;
+  color: #15803d;
+  white-space: nowrap;
+}
+.status-badge .dot {
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* Webhook section */
+.webhook-section {
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid #f3f4f6;
+}
+.webhook-section label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #6b7280;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  margin-bottom: 0.4rem;
+  letter-spacing: 0.06em;
+  margin-bottom: 0.5rem;
 }
 
 .url-row {
   display: flex;
   gap: 0.5rem;
+  align-items: stretch;
 }
 
-.url-input {
+.url-display {
   flex: 1;
+  display: flex;
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
   padding: 0.55rem 0.75rem;
-  border: 1px solid #e5e7eb;
-  border-radius: 7px;
-  font-size: 0.82rem;
+  overflow: hidden;
+  cursor: text;
+  user-select: all;
+}
+
+.url-protocol {
+  color: #94a3b8;
+  font-size: 0.8rem;
   font-family: 'Courier New', monospace;
-  color: #374151;
-  background: #f9fafb;
-  outline: none;
-  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.url-path {
+  font-size: 0.8rem;
+  font-family: 'Courier New', monospace;
+  color: #1e293b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn-copy {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.55rem 1rem;
-  background: var(--accent);
+  gap: 0.4rem;
+  padding: 0 1.1rem;
   color: white;
   border: none;
-  border-radius: 7px;
+  border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: opacity 0.15s;
+  transition: all 0.2s;
+  min-height: 40px;
 }
-.btn-copy:hover { opacity: 0.88; }
-.btn-copy.copied { background: #10b981; }
+.btn-copy:hover { filter: brightness(0.92); }
+.btn-copy.copied { background: #10b981 !important; }
 
-.howto {
-  background: var(--accent-bg);
-  border-radius: 8px;
-  padding: 0.9rem 1rem;
-  margin-bottom: 1rem;
+/* Bottom section */
+.card-bottom {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  padding: 1rem 1.5rem 1.25rem;
+  background: #fafafa;
 }
 
-.howto-title {
-  font-size: 0.82rem;
+.section-title {
+  font-size: 0.75rem;
   font-weight: 700;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.6rem;
+}
+
+/* Steps */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+}
+
+.step-num {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.step span {
+  font-size: 0.81rem;
   color: #374151;
-  margin: 0 0 0.5rem 0;
+  line-height: 1.45;
 }
 
-.howto ol {
-  margin: 0;
-  padding-left: 1.25rem;
-}
-
-.howto li {
-  font-size: 0.83rem;
-  color: #4b5563;
-  margin-bottom: 0.25rem;
-  line-height: 1.5;
-}
-
-.flow-badge {
+/* Flow */
+.flow {
   display: flex;
   align-items: center;
   gap: 0.5rem;
   flex-wrap: wrap;
-  font-size: 0.8rem;
+}
+
+.flow-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.flow-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.flow-logo {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.flow-step span {
+  font-size: 0.72rem;
   color: #6b7280;
-  background: #f9fafb;
-  border-radius: 8px;
-  padding: 0.6rem 0.9rem;
-}
-
-.flow-badge span:not(.arrow) {
-  background: white;
-  border: 1px solid #e5e7eb;
-  padding: 0.2rem 0.6rem;
-  border-radius: 999px;
+  text-align: center;
   font-weight: 500;
-  color: #374151;
+  max-width: 70px;
+  line-height: 1.3;
 }
 
-.arrow { color: #9ca3af; font-weight: bold; }
+.flow-arrow {
+  color: #9ca3af;
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
 
-.info-box {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
+/* Tip box */
+.tip-box {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
   border-radius: 10px;
   padding: 1rem 1.25rem;
-  font-size: 0.88rem;
-  color: #1e40af;
+  font-size: 0.86rem;
+  color: #92400e;
   line-height: 1.6;
+}
+
+.tip-icon {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .card-bottom { grid-template-columns: 1fr; }
+  .card-top { flex-wrap: wrap; }
+  .status-badge { display: none; }
 }
 </style>
