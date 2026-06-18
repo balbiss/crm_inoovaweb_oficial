@@ -28,26 +28,26 @@ const portals = [
   {
     key:        'canal_pro',
     name:       'Canal Pro',
-    domain:     'canalpro.com.br',
+    logo:       '/logos/canal-pro.svg',
     color:      '#7B2FA2',
     colorLight: '#F3E8FF',
-    gradient:   'linear-gradient(135deg, #7B2FA2 0%, #9333EA 100%)',
+    border:     '#D8B4FE',
     description:'Cole a URL abaixo em Configurações → Leads → Receber leads no CRM',
     howto: [
       'Acesse seu painel do Canal Pro',
       'Vá em Configurações → Leads → Receber leads no CRM',
       'No campo "Nome do CRM" escreva: VisitaIA CRM',
-      'Cole a URL no campo "URL de integração"',
+      'Cole a URL abaixo no campo "URL de integração"',
       'Clique em Salvar alterações',
     ]
   },
   {
     key:        'zap',
     name:       'ZAP Imóveis',
-    domain:     'zapimoveis.com.br',
-    color:      '#E8590C',
-    colorLight: '#FFF3ED',
-    gradient:   'linear-gradient(135deg, #E8590C 0%, #F97316 100%)',
+    logo:       '/logos/zap.svg',
+    color:      '#FF5A00',
+    colorLight: '#FFF0E8',
+    border:     '#FED7AA',
     description:'Cole a URL abaixo no painel do Programa de Parceiros ZAP',
     howto: [
       'Acesse o Programa de Parceiros do ZAP Imóveis',
@@ -59,10 +59,10 @@ const portals = [
   {
     key:        'viva_real',
     name:       'Viva Real',
-    domain:     'vivareal.com.br',
+    logo:       '/logos/viva-real.svg',
     color:      '#0062CC',
     colorLight: '#EFF6FF',
-    gradient:   'linear-gradient(135deg, #0062CC 0%, #2563EB 100%)',
+    border:     '#BFDBFE',
     description:'Cole a URL abaixo no painel de integrações do Viva Real',
     howto: [
       'Acesse o painel do Viva Real (mesmo login do ZAP)',
@@ -72,105 +72,90 @@ const portals = [
     ]
   }
 ]
-
-const logoError = (e) => {
-  e.target.style.display = 'none'
-  e.target.nextElementSibling.style.display = 'flex'
-}
 </script>
 
 <template>
   <div class="portals-page">
     <div class="page-header">
       <h2>Portais Imobiliários</h2>
-      <p>Receba leads do Canal Pro, ZAP e Viva Real direto no CRM. Quando um lead chega, a IA já responde no WhatsApp em segundos.</p>
+      <p>Receba leads do Canal Pro, ZAP e Viva Real diretamente no CRM. Quando um lead chega, a IA responde no WhatsApp automaticamente.</p>
     </div>
 
     <div v-if="isLoading" class="loading">
-      <div class="loading-spinner"></div>
-      <span>Carregando URLs...</span>
+      <div class="spinner"></div>
     </div>
 
     <div v-else class="portals-list">
-      <div v-for="portal in portals" :key="portal.key" class="portal-card">
+      <div v-for="portal in portals" :key="portal.key" class="portal-card" :style="{ '--color': portal.color, '--light': portal.colorLight, '--border': portal.border }">
 
-        <!-- Card Header com logo real -->
-        <div class="card-top" :style="{ borderTopColor: portal.color }">
-          <div class="logo-area">
-            <img
-              :src="`https://logo.clearbit.com/${portal.domain}`"
-              :alt="portal.name"
-              class="brand-logo"
-              @error="logoError"
-            />
-            <!-- Fallback caso o logo não carregue -->
-            <div class="logo-fallback" :style="{ background: portal.gradient }" style="display:none">
-              <span>{{ portal.name[0] }}</span>
-            </div>
+        <!-- Header -->
+        <div class="card-header">
+          <div class="logo-wrap">
+            <img :src="portal.logo" :alt="portal.name" class="portal-logo" />
           </div>
-          <div class="portal-info">
-            <h3>{{ portal.name }}</h3>
-            <p>{{ portal.description }}</p>
+          <div class="header-text">
+            <p class="card-desc">{{ portal.description }}</p>
           </div>
-          <div class="status-badge active">
-            <span class="dot"></span>
-            Pronto para usar
+          <div class="badge-active">
+            <span class="pulse-dot"></span>
+            Ativo
           </div>
         </div>
 
         <!-- Webhook URL -->
-        <div class="webhook-section">
-          <label>URL de integração (webhook)</label>
-          <div class="url-row">
-            <div class="url-display">
-              <span class="url-protocol">https://</span>
-              <span class="url-path">{{ (webhookUrls[portal.key] || '').replace('https://', '') }}</span>
-            </div>
-            <button
-              class="btn-copy"
-              :class="{ copied: copiedKey === portal.key }"
-              :style="copiedKey !== portal.key ? { background: portal.color } : {}"
-              @click="copy(portal.key, webhookUrls[portal.key])"
-            >
-              <Check v-if="copiedKey === portal.key" :size="14" />
-              <Copy v-else :size="14" />
-              {{ copiedKey === portal.key ? 'Copiado!' : 'Copiar URL' }}
-            </button>
+        <div class="webhook-row">
+          <div class="url-box" @click="copy(portal.key, webhookUrls[portal.key])">
+            <span class="url-text">{{ webhookUrls[portal.key] || '...' }}</span>
           </div>
+          <button
+            class="btn-copy"
+            :class="{ done: copiedKey === portal.key }"
+            @click="copy(portal.key, webhookUrls[portal.key])"
+          >
+            <Check v-if="copiedKey === portal.key" :size="14" />
+            <Copy v-else :size="14" />
+            {{ copiedKey === portal.key ? 'Copiado!' : 'Copiar URL' }}
+          </button>
         </div>
 
-        <!-- Steps + Flow -->
-        <div class="card-bottom">
-          <div class="howto-section">
-            <p class="section-title">Como configurar</p>
+        <!-- Body: steps + flow -->
+        <div class="card-body">
+          <div class="steps-col">
+            <p class="col-title">Como configurar</p>
             <div class="steps">
               <div v-for="(step, i) in portal.howto" :key="i" class="step">
-                <div class="step-num" :style="{ background: portal.colorLight, color: portal.color }">{{ i + 1 }}</div>
-                <span>{{ step }}</span>
+                <span class="step-num">{{ i + 1 }}</span>
+                <span class="step-text">{{ step }}</span>
               </div>
             </div>
           </div>
 
-          <div class="flow-section">
-            <p class="section-title">O que acontece</p>
+          <div class="flow-col">
+            <p class="col-title">O que acontece</p>
             <div class="flow">
-              <div class="flow-step">
-                <div class="flow-icon" :style="{ background: portal.colorLight }">
-                  <img :src="`https://logo.clearbit.com/${portal.domain}`" class="flow-logo" />
+              <div class="flow-node">
+                <div class="flow-icon-wrap">
+                  <img :src="portal.logo" class="flow-logo" :alt="portal.name" />
                 </div>
-                <span>Lead no {{ portal.name }}</span>
+                <span>Lead no portal</span>
               </div>
-              <ChevronRight :size="16" class="flow-arrow" />
-              <div class="flow-step">
-                <div class="flow-icon" style="background: #F0FDF4">
-                  <span style="font-size:1.1rem">👤</span>
+              <ChevronRight :size="14" class="chevron" />
+              <div class="flow-node">
+                <div class="flow-icon-wrap neutral">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <circle cx="12" cy="8" r="4" fill="#6b7280"/>
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#6b7280" stroke-width="2" stroke-linecap="round"/>
+                  </svg>
                 </div>
                 <span>Contato criado</span>
               </div>
-              <ChevronRight :size="16" class="flow-arrow" />
-              <div class="flow-step">
-                <div class="flow-icon" style="background: #ECFDF5">
-                  <span style="font-size:1.1rem">⚡</span>
+              <ChevronRight :size="14" class="chevron" />
+              <div class="flow-node">
+                <div class="flow-icon-wrap green">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                    <path d="M20.52 3.48C18.24 1.2 15.12 0 12 0 5.4 0 0 5.4 0 12c0 2.1.54 4.14 1.56 5.94L0 24l6.24-1.56C8.04 23.46 10.02 24 12 24c6.6 0 12-5.4 12-12 0-3.12-1.2-6.24-3.48-8.52zM12 22c-1.8 0-3.54-.48-5.1-1.38l-.36-.24-3.72.96.96-3.66-.24-.36C2.52 15.66 2 13.86 2 12 2 6.48 6.48 2 12 2c2.64 0 5.16 1.02 7.02 2.88C20.88 6.78 22 9.36 22 12c0 5.52-4.48 10-10 10z" fill="#22c55e"/>
+                    <path d="M17.46 14.34c-.3-.15-1.74-.84-2.01-.93-.27-.12-.48-.15-.66.15-.18.3-.75.93-.9 1.11-.18.18-.33.21-.63.06-.3-.15-1.29-.48-2.43-1.53-.9-.81-1.5-1.8-1.68-2.1-.18-.3-.03-.48.12-.63.15-.12.3-.33.45-.51.15-.15.21-.3.3-.48.09-.18.06-.33-.03-.48-.09-.15-.66-1.59-.9-2.19-.24-.57-.48-.51-.66-.51-.18-.03-.36-.03-.54-.03-.18 0-.48.06-.75.33-.27.27-1.02.99-1.02 2.43 0 1.44 1.05 2.82 1.2 3.03.15.18 2.07 3.15 5.01 4.41.69.3 1.23.48 1.65.6.69.21 1.32.18 1.83.12.57-.09 1.74-.72 1.98-1.38.27-.69.27-1.26.21-1.38-.09-.12-.27-.18-.57-.33z" fill="#22c55e"/>
+                  </svg>
                 </div>
                 <span>IA responde no WhatsApp</span>
               </div>
@@ -181,53 +166,41 @@ const logoError = (e) => {
       </div>
     </div>
 
-    <div class="tip-box">
-      <div class="tip-icon">💡</div>
-      <div>
-        <strong>Dica:</strong> A IA só responde no WhatsApp se o lead informar o número de telefone.
-        ZAP e Viva Real às vezes ocultam o telefone — nesses casos o lead aparece no painel para follow-up manual.
-      </div>
+    <div class="info-tip">
+      <strong>Atenção:</strong> A resposta automática no WhatsApp só ocorre se o lead informar o telefone no portal.
+      ZAP e Viva Real às vezes ocultam o número — nesses casos o lead aparece no CRM para follow-up manual.
     </div>
   </div>
 </template>
 
 <style scoped>
 .portals-page {
-  max-width: 860px;
-  margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 1.75rem 2rem;
 }
 
 .page-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 .page-header h2 {
-  font-size: 1.4rem;
+  font-size: 1.3rem;
   font-weight: 700;
   color: #111827;
-  margin: 0 0 0.4rem;
+  margin: 0 0 0.35rem;
 }
 .page-header p {
   color: #6b7280;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   margin: 0;
-  max-width: 600px;
   line-height: 1.6;
 }
 
-/* Loading */
 .loading {
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 4rem;
-  color: #6b7280;
-  font-size: 0.9rem;
+  justify-content: center;
+  padding: 3rem;
 }
-.loading-spinner {
-  width: 28px;
-  height: 28px;
+.spinner {
+  width: 26px; height: 26px;
   border: 3px solid #e5e7eb;
   border-top-color: #6366f1;
   border-radius: 50%;
@@ -235,148 +208,106 @@ const logoError = (e) => {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Portal Cards */
+/* Cards */
 .portals-list {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  margin-bottom: 1.5rem;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
 }
 
 .portal-card {
   background: white;
   border: 1px solid #e5e7eb;
-  border-radius: 14px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-  transition: box-shadow 0.2s;
-}
-.portal-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  border-top: 3px solid var(--color);
 }
 
-/* Top section */
-.card-top {
+/* Header */
+.card-header {
   display: flex;
   align-items: center;
-  gap: 1rem;
-  padding: 1.25rem 1.5rem;
-  border-top: 3px solid transparent;
+  gap: 1.25rem;
+  padding: 1rem 1.25rem 0.9rem;
   border-bottom: 1px solid #f3f4f6;
 }
 
-.logo-area {
+.logo-wrap {
   flex-shrink: 0;
-}
-
-.brand-logo {
-  width: 56px;
-  height: 56px;
-  object-fit: contain;
-  border-radius: 10px;
-  border: 1px solid #e5e7eb;
   background: white;
-  padding: 4px;
-}
-
-.logo-fallback {
-  width: 56px;
-  height: 56px;
-  border-radius: 10px;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4rem;
-  font-weight: 900;
-  color: white;
-  letter-spacing: -1px;
-}
-
-.portal-info {
-  flex: 1;
-}
-.portal-info h3 {
-  margin: 0 0 0.2rem;
-  font-size: 1.05rem;
-  font-weight: 700;
-  color: #111827;
-}
-.portal-info p {
-  margin: 0;
-  font-size: 0.82rem;
-  color: #6b7280;
-}
-
-.status-badge {
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 6px 10px;
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0.3rem 0.75rem;
+}
+
+.portal-logo {
+  height: 28px;
+  width: auto;
+  display: block;
+}
+
+.header-text {
+  flex: 1;
+}
+
+.card-desc {
+  margin: 0;
+  font-size: 0.83rem;
+  color: #6b7280;
+  line-height: 1.5;
+}
+
+.badge-active {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.65rem;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 999px;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #15803d;
   white-space: nowrap;
 }
-.status-badge .dot {
-  width: 7px;
-  height: 7px;
+
+.pulse-dot {
+  width: 6px; height: 6px;
   background: #22c55e;
   border-radius: 50%;
   animation: pulse 2s infinite;
 }
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.4; }
-}
+@keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.35 } }
 
-/* Webhook section */
-.webhook-section {
-  padding: 1rem 1.5rem;
-  border-bottom: 1px solid #f3f4f6;
-}
-.webhook-section label {
-  display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #6b7280;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin-bottom: 0.5rem;
-}
-
-.url-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: stretch;
-}
-
-.url-display {
-  flex: 1;
+/* Webhook row */
+.webhook-row {
   display: flex;
   align-items: center;
-  background: #f8fafc;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: #fafafa;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.url-box {
+  flex: 1;
+  background: white;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 0.55rem 0.75rem;
+  border-radius: 7px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
   overflow: hidden;
-  cursor: text;
-  user-select: all;
 }
 
-.url-protocol {
-  color: #94a3b8;
-  font-size: 0.8rem;
+.url-text {
   font-family: 'Courier New', monospace;
-  flex-shrink: 0;
-}
-
-.url-path {
-  font-size: 0.8rem;
-  font-family: 'Courier New', monospace;
-  color: #1e293b;
+  font-size: 0.78rem;
+  color: #334155;
   white-space: nowrap;
+  display: block;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -384,57 +315,62 @@ const logoError = (e) => {
 .btn-copy {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
-  padding: 0 1.1rem;
+  gap: 0.35rem;
+  padding: 0.5rem 0.9rem;
+  background: var(--color);
   color: white;
   border: none;
-  border-radius: 8px;
-  font-size: 0.82rem;
+  border-radius: 7px;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s;
-  min-height: 40px;
+  transition: filter 0.15s;
+  flex-shrink: 0;
 }
-.btn-copy:hover { filter: brightness(0.92); }
-.btn-copy.copied { background: #10b981 !important; }
+.btn-copy:hover { filter: brightness(0.9); }
+.btn-copy.done  { background: #10b981; }
 
-/* Bottom section */
-.card-bottom {
+/* Card body */
+.card-body {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  padding: 1rem 1.5rem 1.25rem;
-  background: #fafafa;
+  gap: 0;
 }
 
-.section-title {
-  font-size: 0.75rem;
+.steps-col {
+  padding: 1rem 1.25rem;
+  border-right: 1px solid #f0f0f0;
+}
+
+.flow-col {
+  padding: 1rem 1.25rem;
+}
+
+.col-title {
+  font-size: 0.72rem;
   font-weight: 700;
-  color: #6b7280;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  margin: 0 0 0.6rem;
+  letter-spacing: 0.07em;
+  color: #9ca3af;
+  margin: 0 0 0.65rem;
 }
 
 /* Steps */
-.steps {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
+.steps { display: flex; flex-direction: column; gap: 0.4rem; }
 
 .step {
   display: flex;
   align-items: flex-start;
-  gap: 0.6rem;
+  gap: 0.55rem;
 }
 
 .step-num {
-  width: 20px;
-  height: 20px;
+  width: 18px; height: 18px;
   border-radius: 50%;
-  font-size: 0.7rem;
+  background: var(--light);
+  color: var(--color);
+  font-size: 0.68rem;
   font-weight: 700;
   display: flex;
   align-items: center;
@@ -443,9 +379,9 @@ const logoError = (e) => {
   margin-top: 1px;
 }
 
-.step span {
-  font-size: 0.81rem;
-  color: #374151;
+.step-text {
+  font-size: 0.8rem;
+  color: #4b5563;
   line-height: 1.45;
 }
 
@@ -454,69 +390,58 @@ const logoError = (e) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
-.flow-step {
+.flow-node {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.35rem;
+  flex: 1;
+  min-width: 0;
 }
 
-.flow-icon {
-  width: 38px;
-  height: 38px;
+.flow-icon-wrap {
+  width: 40px; height: 40px;
   border-radius: 10px;
+  background: var(--light);
+  border: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(0,0,0,0.06);
+  flex-shrink: 0;
 }
+.flow-icon-wrap.neutral { background: #f9fafb; border-color: #e5e7eb; }
+.flow-icon-wrap.green   { background: #f0fdf4; border-color: #bbf7d0; }
 
 .flow-logo {
-  width: 24px;
-  height: 24px;
+  width: 26px; height: 26px;
   object-fit: contain;
 }
 
-.flow-step span {
-  font-size: 0.72rem;
+.flow-node span {
+  font-size: 0.68rem;
   color: #6b7280;
   text-align: center;
   font-weight: 500;
-  max-width: 70px;
   line-height: 1.3;
 }
 
-.flow-arrow {
-  color: #9ca3af;
+.chevron {
+  color: #d1d5db;
   flex-shrink: 0;
-  margin-bottom: 16px;
+  margin-bottom: 18px;
 }
 
-/* Tip box */
-.tip-box {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-start;
+/* Tip */
+.info-tip {
   background: #fffbeb;
   border: 1px solid #fde68a;
-  border-radius: 10px;
-  padding: 1rem 1.25rem;
-  font-size: 0.86rem;
-  color: #92400e;
+  border-radius: 8px;
+  padding: 0.85rem 1.1rem;
+  font-size: 0.84rem;
+  color: #78350f;
   line-height: 1.6;
-}
-
-.tip-icon {
-  font-size: 1.2rem;
-  flex-shrink: 0;
-}
-
-@media (max-width: 640px) {
-  .card-bottom { grid-template-columns: 1fr; }
-  .card-top { flex-wrap: wrap; }
-  .status-badge { display: none; }
 }
 </style>
