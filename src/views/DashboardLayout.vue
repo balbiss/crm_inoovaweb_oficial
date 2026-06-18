@@ -273,6 +273,7 @@ onMounted(() => {
   window.addEventListener('tags-updated', fetchTags)
   window.addEventListener('lead-atribuido', handleLeadAtribuido)
   window.addEventListener('property-match-found', handlePropertyMatchFound)
+  window.addEventListener('snooze-expired', handleSnoozeExpired)
 })
 
 const handleLeadAtribuido = (e) => {
@@ -335,6 +336,25 @@ const handlePropertyMatchFound = (e) => {
   })
 }
 
+const handleSnoozeExpired = (e) => {
+  const { contact_name } = e.detail
+  Swal.fire({
+    toast:           true,
+    position:        'top-end',
+    icon:            'info',
+    title:           '⏰ Conversa reativada!',
+    html:            `<strong>${contact_name || 'Lead'}</strong><br><small style="color:#6b7280">O tempo de adiamento expirou — conversa reaberta.</small>`,
+    showConfirmButton: true,
+    confirmButtonText: 'Ver conversa',
+    confirmButtonColor: '#4338ca',
+    showCloseButton: true,
+    timer:           12000,
+    timerProgressBar: true
+  }).then((result) => {
+    if (result.isConfirmed) router.push('/conversas')
+  })
+}
+
 onUnmounted(() => {
   window.removeEventListener('keydown', handlePaletteKeydown)
   if (notificationInterval) clearInterval(notificationInterval)
@@ -342,6 +362,7 @@ onUnmounted(() => {
   window.removeEventListener('tags-updated', fetchTags)
   window.removeEventListener('lead-atribuido', handleLeadAtribuido)
   window.removeEventListener('property-match-found', handlePropertyMatchFound)
+  window.removeEventListener('snooze-expired', handleSnoozeExpired)
 })
 
 const handleLogout = () => {

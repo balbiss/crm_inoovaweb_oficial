@@ -279,14 +279,48 @@ export const useConversationsStore = defineStore('conversations', {
         const response = await api.put(`/conversations/${conversationId}`, {
           conversation: { status }
         })
-        
         const convIndex = this.conversations.findIndex(c => c.id === conversationId)
         if (convIndex !== -1) {
-          // Update the local conversation state
           this.conversations[convIndex].status = response.data.status
+          this.conversations[convIndex].snoozed_until = response.data.snoozed_until || null
         }
       } catch (error) {
         console.error('Error updating conversation status:', error)
+      }
+    },
+
+    async snoozeConversation(conversationId, snoozedUntil) {
+      try {
+        const response = await api.put(`/conversations/${conversationId}`, {
+          conversation: { status: 'snoozed', snoozed_until: snoozedUntil }
+        })
+        const convIndex = this.conversations.findIndex(c => c.id === conversationId)
+        if (convIndex !== -1) {
+          this.conversations[convIndex].status = 'snoozed'
+          this.conversations[convIndex].snoozed_until = response.data.snoozed_until
+        }
+      } catch (error) {
+        console.error('Error snoozing conversation:', error)
+        throw error
+      }
+    },
+
+    async resolveConversation(conversationId, { kanbanStage, sendClosingMessage, closingMessageText }) {
+      try {
+        await api.put(`/conversations/${conversationId}`, {
+          conversation: { status: 'resolved' },
+          kanban_stage:          kanbanStage || '',
+          send_closing_message:  sendClosingMessage,
+          closing_message_text:  closingMessageText || ''
+        })
+        const convIndex = this.conversations.findIndex(c => c.id === conversationId)
+        if (convIndex !== -1) {
+          this.conversations[convIndex].status = 'resolved'
+          this.conversations[convIndex].snoozed_until = null
+        }
+      } catch (error) {
+        console.error('Error resolving conversation:', error)
+        throw error
       }
     },
 
@@ -351,6 +385,13 @@ export const useConversationsStore = defineStore('conversations', {
             if (idx !== -1) Object.assign(this.conversations[idx], payload.conversation)
           } else if (payload.event === 'property_match_found') {
             window.dispatchEvent(new CustomEvent('property-match-found', { detail: payload }))
+          } else if (payload.event === 'snooze_expired') {
+            const conv = this.conversations.find(c => Number(c.id) === Number(payload.conversation_id))
+            if (conv) {
+              conv.status = 'open'
+              conv.snoozed_until = null
+            }
+            window.dispatchEvent(new CustomEvent('snooze-expired', { detail: payload }))
           } else if (payload.event === 'lead_atribuido') {
             const me = this.currentUser
             if (Number(payload.assigned_to_user_id) === Number(me?.id)) {
