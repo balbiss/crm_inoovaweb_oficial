@@ -7,6 +7,7 @@ import { Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-vue-next'
 const apiKey       = ref('')
 const showKey      = ref(false)
 const isConfigured = ref(false)
+const isSandbox    = ref(false)
 const isSaving     = ref(false)
 const isTesting    = ref(false)
 const testResult   = ref(null) // { ok, message }
@@ -15,6 +16,7 @@ onMounted(async () => {
   try {
     const res = await api.get('/account')
     isConfigured.value = res.data.asaas_configured
+    isSandbox.value    = res.data.asaas_sandbox ?? false
     if (res.data.asaas_api_key) {
       apiKey.value = res.data.asaas_api_key
     }
@@ -27,12 +29,12 @@ const saveKey = async () => {
   }
   isSaving.value = true
   try {
-    await api.put('/account', { account: { asaas_api_key: apiKey.value.trim() } })
+    await api.put('/account', { account: { asaas_api_key: apiKey.value.trim(), asaas_sandbox: isSandbox.value } })
     isConfigured.value = true
     testResult.value = null
-    Swal.fire({ icon: 'success', title: 'Salvo!', text: 'API Key do Asaas salva com sucesso.', timer: 1800, showConfirmButton: false })
+    Swal.fire({ icon: 'success', title: 'Salvo!', text: 'Configuração do Asaas salva com sucesso.', timer: 1800, showConfirmButton: false })
   } catch (e) {
-    Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível salvar a chave.', confirmButtonColor: '#4338ca' })
+    Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível salvar a configuração.', confirmButtonColor: '#4338ca' })
   } finally {
     isSaving.value = false
   }
@@ -49,6 +51,13 @@ const testConnection = async () => {
   } finally {
     isTesting.value = false
   }
+}
+
+const saveSandboxMode = async () => {
+  try {
+    await api.put('/account', { account: { asaas_sandbox: isSandbox.value } })
+    testResult.value = null
+  } catch (e) { console.error(e) }
 }
 
 const removeKey = async () => {
@@ -113,6 +122,19 @@ const removeKey = async () => {
           <Loader2 v-if="isSaving" :size="15" class="spin" />
           {{ isSaving ? 'Salvando...' : 'Salvar' }}
         </button>
+      </div>
+
+      <!-- Ambiente -->
+      <div class="env-row">
+        <span class="env-label">Ambiente:</span>
+        <label class="env-option" :class="{ active: !isSandbox }">
+          <input type="radio" :value="false" v-model="isSandbox" @change="saveSandboxMode" />
+          🟢 Produção
+        </label>
+        <label class="env-option" :class="{ active: isSandbox }">
+          <input type="radio" :value="true" v-model="isSandbox" @change="saveSandboxMode" />
+          🧪 Sandbox (testes)
+        </label>
       </div>
 
       <div class="btn-row">
@@ -220,6 +242,43 @@ const removeKey = async () => {
     display: flex;
     padding: 0;
     &:hover { color: #4338ca; }
+  }
+}
+
+.env-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.env-label {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+
+.env-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  border: 1.5px solid var(--border-color);
+  font-size: 0.83rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+
+  input[type="radio"] { display: none; }
+
+  &.active {
+    border-color: #4338ca;
+    background: rgba(67,56,202,0.07);
+    color: #4338ca;
+    font-weight: 600;
   }
 }
 
