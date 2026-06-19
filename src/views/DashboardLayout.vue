@@ -37,7 +37,8 @@ import {
   CalendarDays,
   Badge,
   TrendingUp,
-  CreditCard
+  CreditCard,
+  BookOpen
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -497,6 +498,11 @@ const handleLogout = () => {
         <router-link to="/relatorios" class="nav-item" active-class="active">
           <TrendingUp class="icon" />
           <span>Relatórios</span>
+        </router-link>
+
+        <router-link to="/manual" class="nav-item" active-class="active">
+          <BookOpen class="icon" />
+          <span>Manual do Sistema</span>
         </router-link>
 
         <div class="nav-section">

@@ -184,6 +184,11 @@ const router = createRouter({
           path: 'relatorios',
           name: 'relatorios',
           component: () => import('../views/Reports.vue')
+        },
+        {
+          path: 'manual',
+          name: 'manual',
+          component: () => import('../views/Manual.vue')
         }
       ]
     },
