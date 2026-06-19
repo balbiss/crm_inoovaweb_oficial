@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
@@ -14,10 +14,25 @@ const brandAccent = words[words.length - 1]
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
+const rememberMe = ref(false)
 const isLoading = ref(false)
+
+onMounted(() => {
+  const saved = localStorage.getItem('remembered_email')
+  if (saved) {
+    email.value = saved
+    rememberMe.value = true
+  }
+})
 
 const handleLogin = async () => {
   isLoading.value = true
+
+  if (rememberMe.value) {
+    localStorage.setItem('remembered_email', email.value)
+  } else {
+    localStorage.removeItem('remembered_email')
+  }
 
   try {
     const response = await axios.post(`${brand.apiUrl}/users/sign_in`, {
@@ -121,7 +136,7 @@ const handleLogin = async () => {
 
           <div class="form-actions">
             <label class="remember-me">
-              <input type="checkbox" />
+              <input type="checkbox" v-model="rememberMe" />
               Lembrar de mim
             </label>
             <router-link to="/forgot-password" class="forgot-password">Esqueceu a senha?</router-link>
