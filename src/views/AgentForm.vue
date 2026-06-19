@@ -160,14 +160,16 @@ const saveAgent = async () => {
         <div class="input-group">
           <label>Senha de Acesso <span v-if="isEditing" class="text-muted text-xs">(Deixe em branco para não alterar)</span></label>
           <div class="password-wrapper">
-            <input :type="showPassword ? 'text' : 'password'" v-model="form.password" :required="!isEditing" placeholder="Digite uma senha forte" />
-            <button type="button" class="btn-inside" @click="showPassword = !showPassword" title="Mostrar/Ocultar Senha">
-              <EyeOff v-if="showPassword" class="icon-sm" />
-              <Eye v-else class="icon-sm" />
-            </button>
-            <button type="button" class="btn-inside" @click="generatePassword" title="Gerar Senha Aleatória">
-              <Shuffle class="icon-sm" />
-            </button>
+            <input :type="showPassword ? 'text' : 'password'" v-model="form.password" :required="!isEditing" placeholder="Digite uma senha forte" class="pwd-input" />
+            <div class="pwd-actions">
+              <button type="button" @click="showPassword = !showPassword" title="Mostrar/Ocultar Senha">
+                <EyeOff v-if="showPassword" class="icon-sm" />
+                <Eye v-else class="icon-sm" />
+              </button>
+              <button type="button" @click="generatePassword" title="Gerar Senha Aleatória">
+                <Shuffle class="icon-sm" />
+              </button>
+            </div>
           </div>
         </div>
         
@@ -339,31 +341,32 @@ const saveAgent = async () => {
 }
 
 .password-wrapper {
-  display: flex;
-  align-items: center;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--bg-primary);
-  overflow: hidden;
+  position: relative;
 
-  &:focus-within { border-color: var(--primary); }
-
-  input {
-    flex: 1;
-    border: none !important;
-    background: transparent;
-    padding: 0.75rem;
-    color: var(--text-main);
-    min-width: 0;
-    &:focus { outline: none; }
+  .pwd-input {
+    padding-right: 5rem !important;
   }
 
-  .btn-inside {
-    flex-shrink: 0;
-    background: transparent; border: none; cursor: pointer;
-    color: var(--text-muted); padding: 0.5rem 0.6rem;
-    display: flex; align-items: center; justify-content: center;
-    &:hover { color: var(--primary); }
+  .pwd-actions {
+    position: absolute;
+    right: 0.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.1rem;
+
+    button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      padding: 0.35rem 0.4rem;
+      display: flex;
+      align-items: center;
+      border-radius: 4px;
+      &:hover { color: var(--primary); background: rgba(67, 56, 202, 0.06); }
+    }
   }
 }
 
