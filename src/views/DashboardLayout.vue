@@ -161,6 +161,9 @@ const userDisplayName = () => {
 }
 
 import { brand } from '../config/brand'
+import { usePushNotifications } from '../composables/usePushNotifications'
+
+const { subscribe: subscribePush } = usePushNotifications()
 
 const accountName = () => {
   return currentUser.value.account_name || brand.name
@@ -250,6 +253,18 @@ const handleVisibilityChange = () => {
 
 onMounted(() => {
   loadUser()
+
+  // Push notifications — pede permissão após login (silencioso se negado)
+  subscribePush()
+
+  // Navegação disparada pelo toque na push notification (quando app estava fechado)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (event) => {
+      if (event.data?.type === 'NAVIGATE') {
+        router.push(event.data.url)
+      }
+    })
+  }
 
   // Only fetch stores if not already loaded
   if (!inboxesStore.isLoadedOnce) inboxesStore.fetchInboxes()
