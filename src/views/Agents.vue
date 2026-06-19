@@ -29,7 +29,7 @@ onMounted(() => {
 
 const queueAgents = computed(() =>
   [...agents.value]
-    .filter(a => a.available_for_roundrobin && a.status === 'active')
+    .filter(a => a.available_for_roundrobin && a.status === 'active' && a.department === 'corretor')
     .sort((a, b) => (a.queue_position ?? 9999) - (b.queue_position ?? 9999))
 )
 
@@ -157,20 +157,21 @@ const toggleRoundRobin = async (agent) => {
             <td>{{ agent.email }}</td>
             <td>{{ agent.phone || '-' }}</td>
             <td>
-              <button
-                class="toggle-btn"
-                :class="{ 'toggle-on': agent.available_for_roundrobin, 'toggle-loading': togglingId === agent.id }"
-                :disabled="togglingId === agent.id || agent.status === 'blocked'"
-                @click="toggleRoundRobin(agent)"
-                :title="agent.available_for_roundrobin ? 'Remover da fila de rodízio' : 'Adicionar à fila de rodízio'"
-              >
-                <span class="toggle-track">
-                  <span class="toggle-thumb"></span>
-                </span>
-                <span class="toggle-label">
-                  {{ agent.available_for_roundrobin ? `${queueAgents.findIndex(a => a.id === agent.id) + 1}º na fila` : 'Desligado' }}
-                </span>
-              </button>
+              <template v-if="agent.department === 'corretor' || !agent.department">
+                <button
+                  class="toggle-btn"
+                  :class="{ 'toggle-on': agent.available_for_roundrobin, 'toggle-loading': togglingId === agent.id }"
+                  :disabled="togglingId === agent.id || agent.status === 'blocked'"
+                  @click="toggleRoundRobin(agent)"
+                  :title="agent.available_for_roundrobin ? 'Remover da fila de rodízio' : 'Adicionar à fila de rodízio'"
+                >
+                  <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                  <span class="toggle-label">
+                    {{ agent.available_for_roundrobin ? `${queueAgents.findIndex(a => a.id === agent.id) + 1}º na fila` : 'Desligado' }}
+                  </span>
+                </button>
+              </template>
+              <span v-else class="text-xs text-muted">— encaminhado pela IA</span>
             </td>
             <td class="actions-cell">
               <button class="btn-icon" @click="router.push(`/agentes/${agent.id}/editar`)" title="Editar">
