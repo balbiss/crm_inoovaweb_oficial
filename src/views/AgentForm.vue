@@ -339,13 +339,29 @@ const saveAgent = async () => {
 }
 
 .password-wrapper {
-  position: relative;
   display: flex;
   align-items: center;
-  input { padding-right: 80px; } // espaço para botoes
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  overflow: hidden;
+
+  &:focus-within { border-color: var(--primary); }
+
+  input {
+    flex: 1;
+    border: none !important;
+    background: transparent;
+    padding: 0.75rem;
+    color: var(--text-main);
+    min-width: 0;
+    &:focus { outline: none; }
+  }
+
   .btn-inside {
+    flex-shrink: 0;
     background: transparent; border: none; cursor: pointer;
-    color: var(--text-muted); padding: 0.5rem;
+    color: var(--text-muted); padding: 0.5rem 0.6rem;
     display: flex; align-items: center; justify-content: center;
     &:hover { color: var(--primary); }
   }
