@@ -1,118 +1,258 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { Plus, Search, Filter, Mail, Phone, ChevronDown, ChevronUp, ArrowDownUp, MoreVertical } from '@lucide/vue'
-import api from '../api' // Uses our configured axios instance with interceptor
-import Swal from 'sweetalert2'
+import { useRouter } from 'vue-router'
+import { Plus, Search, Filter, ChevronDown, ArrowDownUp, MoreVertical, X, MessageCircle, Download, Check } from '@lucide/vue'
+import api from '../api'
 import { useContactsStore } from '../store/contacts'
 import { storeToRefs } from 'pinia'
 
+const router = useRouter()
 const contactsStore = useContactsStore()
 const { contacts, isLoading } = storeToRefs(contactsStore)
-const expandedContactId = ref(null)
 
-const fetchContacts = () => {
-  contactsStore.fetchContacts()
+// ── Search / Filter / Sort state ─────────────────────────────
+const searchQuery      = ref('')
+const showFilter       = ref(false)
+const showSort         = ref(false)
+const showMore         = ref(false)
+const showSendModal    = ref(false)
+const sendSearch       = ref('')
+const activeTemps      = ref([])          // temperature filter
+const sortBy           = ref('newest')    // newest | oldest | name_asc | name_desc
+
+const SORT_OPTIONS = [
+  { value: 'newest',    label: 'Mais recentes' },
+  { value: 'oldest',   label: 'Mais antigos' },
+  { value: 'name_asc', label: 'Nome A → Z' },
+  { value: 'name_desc',label: 'Nome Z → A' },
+]
+
+const TEMP_OPTIONS = [
+  { value: 'hot',  label: 'Quente', color: '#ef4444' },
+  { value: 'warm', label: 'Morno',  color: '#f59e0b' },
+  { value: 'cold', label: 'Frio',   color: '#6b7280' },
+]
+
+// ── Computed ─────────────────────────────────────────────────
+const contactName = (c) => ((c.first_name || c.name || '') + ' ' + (c.last_name || '')).trim()
+
+const filteredContacts = computed(() => {
+  let list = contacts.value
+
+  // text search
+  if (searchQuery.value.trim()) {
+    const q = searchQuery.value.toLowerCase()
+    list = list.filter(c =>
+      contactName(c).toLowerCase().includes(q) ||
+      (c.phone  || '').includes(q) ||
+      (c.email  || '').toLowerCase().includes(q)
+    )
+  }
+
+  // temperature filter
+  if (activeTemps.value.length > 0) {
+    list = list.filter(c => activeTemps.value.includes(c.temperature))
+  }
+
+  // sort
+  list = [...list].sort((a, b) => {
+    if (sortBy.value === 'name_asc')  return contactName(a).localeCompare(contactName(b))
+    if (sortBy.value === 'name_desc') return contactName(b).localeCompare(contactName(a))
+    if (sortBy.value === 'oldest')    return new Date(a.created_at) - new Date(b.created_at)
+    return new Date(b.created_at) - new Date(a.created_at) // newest
+  })
+
+  return list
+})
+
+const activeFilterCount = computed(() => activeTemps.value.length)
+const currentSortLabel  = computed(() => SORT_OPTIONS.find(o => o.value === sortBy.value)?.label || '')
+
+// ── Send-message modal ────────────────────────────────────────
+const sendModalContacts = computed(() => {
+  const q = sendSearch.value.toLowerCase()
+  const list = q
+    ? contacts.value.filter(c =>
+        contactName(c).toLowerCase().includes(q) || (c.phone || '').includes(q)
+      )
+    : contacts.value
+  return list.slice(0, 12)
+})
+
+const goToConversation = (contact) => {
+  showSendModal.value = false
+  router.push('/conversas')
 }
 
-const closeDropdown = () => {
-  if (showCountryDropdown.value) {
-    showCountryDropdown.value = false
+// ── Export CSV ────────────────────────────────────────────────
+const exportCsv = () => {
+  const header = ['Nome', 'Telefone', 'Email', 'Temperatura', 'Intenção', 'Origem']
+  const rows = filteredContacts.value.map(c => [
+    contactName(c),
+    c.phone  || '',
+    c.email  || '',
+    c.temperature || '',
+    c.intention   || '',
+    c.source      || '',
+  ])
+  const csv = [header, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n')
+  const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+  const url  = URL.createObjectURL(blob)
+  const a    = Object.assign(document.createElement('a'), { href: url, download: 'contatos.csv' })
+  a.click()
+  URL.revokeObjectURL(url)
+  showMore.value = false
+}
+
+// ── Toggle helpers ────────────────────────────────────────────
+const toggleTemp = (v) => {
+  const i = activeTemps.value.indexOf(v)
+  i === -1 ? activeTemps.value.push(v) : activeTemps.value.splice(i, 1)
+}
+
+const clearFilters = () => { activeTemps.value = []; showFilter.value = false }
+
+// ── Close popovers on outside click ──────────────────────────
+const closeAll = (e) => {
+  if (!e.target.closest('.popover-anchor')) {
+    showFilter.value = false
+    showSort.value   = false
+    showMore.value   = false
   }
 }
 
 onMounted(() => {
-  fetchContacts()
-  document.addEventListener('click', closeDropdown)
+  contactsStore.fetchContacts()
+  document.addEventListener('click', closeAll)
 })
+onUnmounted(() => document.removeEventListener('click', closeAll))
 
-onUnmounted(() => {
-  document.removeEventListener('click', closeDropdown)
-})
-
-// Code removed as form is moved to ContactDetails.vue
-
-const getInitials = (name) => {
-  if (!name) return '?'
-  return name.substring(0, 2).toUpperCase()
-}
-
-const colors = [
-  { bg: '#dbeafe', color: '#1e40af' }, // Blue
-  { bg: '#d1fae5', color: '#065f46' }, // Green
-  { bg: '#fee2e2', color: '#991b1b' }, // Red
-  { bg: '#fef3c7', color: '#92400e' }, // Yellow
-  { bg: '#f3e8ff', color: '#6b21a8' }  // Purple
+// ── Avatar helpers ────────────────────────────────────────────
+const getInitials = (name) => (name || '?').substring(0, 2).toUpperCase()
+const PALETTE = [
+  { bg: '#dbeafe', color: '#1e40af' },
+  { bg: '#d1fae5', color: '#065f46' },
+  { bg: '#fee2e2', color: '#991b1b' },
+  { bg: '#fef3c7', color: '#92400e' },
+  { bg: '#f3e8ff', color: '#6b21a8' },
 ]
-
 const getAvatarStyle = (name) => {
   if (!name) return { backgroundColor: '#e5e7eb', color: '#4b5563' }
-  const index = name.charCodeAt(0) % colors.length
-  return {
-    backgroundColor: colors[index].bg,
-    color: colors[index].color
-  }
+  const p = PALETTE[name.charCodeAt(0) % PALETTE.length]
+  return { backgroundColor: p.bg, color: p.color }
 }
 
-// Country Selector Logic
-const showCountryDropdown = ref(false)
-const searchCountryQuery = ref('')
-
-const countriesList = [
-  { code: 'AF', name: 'Afghanistan' },
-  { code: 'AX', name: 'Aland Islands' },
-  { code: 'AL', name: 'Albania' },
-  { code: 'DZ', name: 'Algeria' },
-  { code: 'AD', name: 'Andorra' },
-  { code: 'AO', name: 'Angola' },
-  { code: 'AI', name: 'Anguilla' },
-  { code: 'AQ', name: 'Antarctica' },
-  { code: 'AG', name: 'Antigua and Barbuda' },
-  { code: 'AR', name: 'Argentina' },
-  { code: 'AM', name: 'Armenia' },
-  { code: 'AW', name: 'Aruba' },
-  { code: 'AU', name: 'Australia' },
-  { code: 'AT', name: 'Austria' },
-  { code: 'AZ', name: 'Azerbaijan' },
-  { code: 'BS', name: 'Bahamas' },
-  { code: 'BR', name: 'Brazil' },
-  { code: 'CA', name: 'Canada' },
-  { code: 'PT', name: 'Portugal' },
-  { code: 'US', name: 'United States' }
-]
-
-const filteredCountries = computed(() => {
-  if (!searchCountryQuery.value) return countriesList
-  return countriesList.filter(c => 
-    c.name.toLowerCase().includes(searchCountryQuery.value.toLowerCase()) || 
-    c.code.toLowerCase().includes(searchCountryQuery.value.toLowerCase())
-  )
-})
-
-const selectCountry = (contact, country) => {
-  contact.country_code = country.code
-  showCountryDropdown.value = false
-  searchCountryQuery.value = ''
-}
+const tempColor = (t) => ({ hot: '#ef4444', warm: '#f59e0b', cold: '#6b7280' }[t] || '#e5e7eb')
+const tempLabel = (t) => ({ hot: 'Quente', warm: 'Morno', cold: 'Frio' }[t] || '')
 </script>
 
 <template>
   <div class="page-container">
+
+    <!-- Header -->
     <div class="page-header">
-      <div class="header-left">
-        <h1>Contatos</h1>
-      </div>
+      <h1>Contatos</h1>
+
       <div class="header-actions">
+        <!-- Search -->
         <div class="search-box">
-          <Search class="icon-sm search-icon" />
-          <input type="text" placeholder="Pesquisar..." />
+          <Search class="search-icon" :size="14" />
+          <input v-model="searchQuery" type="text" placeholder="Pesquisar nome, telefone ou email..." />
+          <button v-if="searchQuery" class="clear-search" @click="searchQuery = ''"><X :size="12" /></button>
         </div>
-        <button class="icon-btn"><Filter class="icon-sm" /></button>
-        <button class="icon-btn"><ArrowDownUp class="icon-sm" /></button>
-        <button class="icon-btn"><MoreVertical class="icon-sm" /></button>
-        <button class="btn-primary">Enviar Mensagem</button>
+
+        <!-- Filter -->
+        <div class="popover-anchor">
+          <button
+            class="icon-btn"
+            :class="{ active: activeFilterCount > 0 }"
+            @click.stop="showFilter = !showFilter; showSort = false; showMore = false"
+            title="Filtrar"
+          >
+            <Filter :size="16" />
+            <span v-if="activeFilterCount > 0" class="badge-dot">{{ activeFilterCount }}</span>
+          </button>
+
+          <div v-if="showFilter" class="popover" @click.stop>
+            <div class="popover-header">
+              <span>Filtrar por</span>
+              <button v-if="activeFilterCount > 0" class="btn-link" @click="clearFilters">Limpar</button>
+            </div>
+            <div class="popover-section-label">Temperatura</div>
+            <label v-for="t in TEMP_OPTIONS" :key="t.value" class="popover-check">
+              <div class="check-box" :class="{ checked: activeTemps.includes(t.value) }" @click="toggleTemp(t.value)">
+                <Check v-if="activeTemps.includes(t.value)" :size="10" />
+              </div>
+              <span class="temp-dot" :style="{ background: t.color }"></span>
+              {{ t.label }}
+            </label>
+            <div class="popover-footer">
+              <button class="btn-apply" @click="showFilter = false">Aplicar</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sort -->
+        <div class="popover-anchor">
+          <button
+            class="icon-btn"
+            :class="{ active: sortBy !== 'newest' }"
+            @click.stop="showSort = !showSort; showFilter = false; showMore = false"
+            title="Ordenar"
+          >
+            <ArrowDownUp :size="16" />
+          </button>
+
+          <div v-if="showSort" class="popover" @click.stop>
+            <div class="popover-header"><span>Ordenar por</span></div>
+            <button
+              v-for="opt in SORT_OPTIONS"
+              :key="opt.value"
+              class="sort-option"
+              :class="{ active: sortBy === opt.value }"
+              @click="sortBy = opt.value; showSort = false"
+            >
+              <Check v-if="sortBy === opt.value" :size="12" />
+              {{ opt.label }}
+            </button>
+          </div>
+        </div>
+
+        <!-- More -->
+        <div class="popover-anchor">
+          <button
+            class="icon-btn"
+            @click.stop="showMore = !showMore; showFilter = false; showSort = false"
+            title="Mais opções"
+          >
+            <MoreVertical :size="16" />
+          </button>
+
+          <div v-if="showMore" class="popover popover-sm" @click.stop>
+            <button class="more-option" @click="exportCsv">
+              <Download :size="14" /> Exportar CSV ({{ filteredContacts.length }} contatos)
+            </button>
+          </div>
+        </div>
+
+        <!-- Send message -->
+        <button class="btn-primary" @click="showSendModal = true">
+          <MessageCircle :size="14" /> Enviar Mensagem
+        </button>
       </div>
     </div>
 
+    <!-- Count bar -->
+    <div class="count-bar" v-if="!isLoading">
+      <span>{{ filteredContacts.length }} contato{{ filteredContacts.length !== 1 ? 's' : '' }}</span>
+      <span v-if="activeFilterCount > 0 || searchQuery" class="filter-active-tag">
+        Filtros ativos
+        <button @click="searchQuery = ''; activeTemps = []"><X :size="10" /></button>
+      </span>
+      <span v-if="sortBy !== 'newest'" class="sort-tag">{{ currentSortLabel }}</span>
+    </div>
+
+    <!-- List -->
     <div class="contacts-list">
       <div v-if="isLoading" class="skeleton-list">
         <div class="skeleton-card" v-for="i in 5" :key="i">
@@ -126,40 +266,77 @@ const selectCountry = (contact, country) => {
       </div>
 
       <template v-else>
-        <div 
-          class="contact-card" 
-          v-for="contact in contacts" 
+        <div
+          class="contact-card"
+          v-for="contact in filteredContacts"
           :key="contact.id"
+          @click="router.push(`/contatos/${contact.id}`)"
         >
-          <div class="card-header" @click="$router.push(`/contatos/${contact.id}`)">
-            <div class="contact-info-summary">
-              <div class="avatar" :style="getAvatarStyle(contact.first_name || contact.name)">
-                {{ getInitials(contact.first_name || contact.name) }}
-              </div>
-              <div class="contact-text">
-                <h3 class="contact-name">{{ contact.first_name || contact.name }} {{ contact.last_name || '' }}</h3>
-                <div class="contact-subtext">
-                  <span class="phone">{{ contact.phone || 'Sem telefone' }}</span>
-                  <span class="separator">|</span>
-                  <a href="#" class="details-link" @click.stop.prevent="$router.push(`/contatos/${contact.id}`)">Ver detalhes</a>
-                </div>
-              </div>
-            </div>
-            <div class="card-actions">
-              <ChevronDown class="icon-sm" />
-            </div>
+          <div class="avatar" :style="getAvatarStyle(contact.first_name || contact.name)">
+            {{ getInitials(contact.first_name || contact.name) }}
           </div>
+
+          <div class="contact-info">
+            <span class="contact-name">{{ contactName(contact) }}</span>
+            <span class="contact-sub">{{ contact.phone || 'Sem telefone' }}<template v-if="contact.email"> · {{ contact.email }}</template></span>
+          </div>
+
+          <div class="contact-meta">
+            <span v-if="contact.temperature" class="temp-chip" :style="{ background: tempColor(contact.temperature) + '22', color: tempColor(contact.temperature) }">
+              {{ tempLabel(contact.temperature) }}
+            </span>
+            <span v-if="contact.source" class="source-chip">{{ contact.source }}</span>
+          </div>
+
+          <ChevronDown :size="16" class="chevron" />
         </div>
-        
-        <div class="pagination" v-if="contacts.length > 0">
-          <span class="showing-text">Exibindo 1 - {{ contacts.length }} de {{ contacts.length }} contatos</span>
+
+        <div v-if="filteredContacts.length === 0 && !isLoading" class="empty-state">
+          <span v-if="searchQuery || activeFilterCount > 0">Nenhum contato encontrado para os filtros aplicados.</span>
+          <span v-else>Nenhum contato cadastrado.</span>
         </div>
-        
-        <div v-if="contacts.length === 0" class="empty-state">
-          Nenhum contato encontrado.
+
+        <div class="pagination" v-if="filteredContacts.length > 0">
+          Exibindo {{ filteredContacts.length }} de {{ contacts.length }} contatos
         </div>
       </template>
     </div>
+
+    <!-- Send Message Modal -->
+    <div v-if="showSendModal" class="modal-overlay" @click.self="showSendModal = false">
+      <div class="modal-box">
+        <div class="modal-head">
+          <span>Enviar Mensagem</span>
+          <button @click="showSendModal = false"><X :size="16" /></button>
+        </div>
+        <div class="modal-body">
+          <p class="modal-hint">Selecione o contato para abrir a conversa no WhatsApp:</p>
+          <div class="modal-search">
+            <Search :size="14" />
+            <input v-model="sendSearch" placeholder="Buscar contato..." autofocus />
+          </div>
+          <div class="modal-contact-list">
+            <button
+              v-for="c in sendModalContacts"
+              :key="c.id"
+              class="modal-contact-item"
+              @click="goToConversation(c)"
+            >
+              <div class="mc-avatar" :style="getAvatarStyle(c.first_name || c.name)">
+                {{ getInitials(c.first_name || c.name) }}
+              </div>
+              <div class="mc-info">
+                <span class="mc-name">{{ contactName(c) }}</span>
+                <span class="mc-phone">{{ c.phone || 'Sem telefone' }}</span>
+              </div>
+              <MessageCircle :size="14" class="mc-icon" />
+            </button>
+            <div v-if="sendModalContacts.length === 0" class="empty-modal">Nenhum contato encontrado.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -169,397 +346,445 @@ const selectCountry = (contact, country) => {
   flex-direction: column;
   height: 100%;
   padding: 1.5rem 2rem;
-  background: #f8f9fa; /* Matches Chatwoot light gray bg */
+  background: var(--bg-primary);
   overflow-y: auto;
+  gap: 0;
 }
 
+// ── Header ──────────────────────────────────────────────────
 .page-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 0.75rem;
 
-  .header-left {
-    h1 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: #1f2937;
-    }
-  }
+  h1 { font-size: 1.25rem; font-weight: 700; color: var(--text-main); margin: 0; }
+}
 
-  .header-actions {
-    display: flex;
-    gap: 0.75rem;
-    align-items: center;
-  }
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .search-box {
   position: relative;
-  
+  display: flex;
+  align-items: center;
+
   .search-icon {
     position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #9ca3af;
+    left: 0.6rem;
+    color: var(--text-muted);
+    pointer-events: none;
   }
-  
+
   input {
-    padding: 0.5rem 1rem 0.5rem 2.2rem;
-    background: #f3f4f6;
-    border: none;
+    padding: 0.45rem 2rem 0.45rem 2rem;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
     border-radius: 6px;
     outline: none;
-    font-size: 0.85rem;
-    color: #1f2937;
-    width: 250px;
-    
-    &::placeholder {
-      color: #9ca3af;
-    }
-    
-    &:focus { 
-      box-shadow: 0 0 0 2px #bfdbfe; 
-    }
+    font-size: 0.82rem;
+    color: var(--text-main);
+    width: 240px;
+    &::placeholder { color: var(--text-muted); }
+    &:focus { border-color: #4338ca; }
+  }
+
+  .clear-search {
+    position: absolute;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    &:hover { color: var(--text-main); }
   }
 }
 
+// ── Icon buttons ─────────────────────────────────────────────
 .icon-btn {
-  background: transparent;
-  border: none;
+  position: relative;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.45rem;
   cursor: pointer;
-  padding: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
-  
-  &:hover { color: #374151; }
+  color: var(--text-muted);
+  transition: border-color 0.12s, color 0.12s;
+
+  &:hover { border-color: #4338ca; color: #4338ca; }
+  &.active { border-color: #4338ca; color: #4338ca; background: rgba(67,56,202,0.06); }
+
+  .badge-dot {
+    position: absolute;
+    top: -5px; right: -5px;
+    background: #4338ca;
+    color: white;
+    font-size: 0.6rem;
+    font-weight: 700;
+    width: 14px; height: 14px;
+    border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+  }
 }
 
 .btn-primary {
-  background: #2563eb;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: #4338ca;
   color: white;
-  padding: 0.5rem 1rem;
+  padding: 0.45rem 0.9rem;
   border-radius: 6px;
   border: none;
-  font-weight: 500;
-  font-size: 0.85rem;
+  font-weight: 600;
+  font-size: 0.82rem;
   cursor: pointer;
-  margin-left: 1rem;
-  
-  &:hover { background: #1d4ed8; }
+  &:hover { background: #3730a3; }
 }
 
+// ── Popovers ─────────────────────────────────────────────────
+.popover-anchor { position: relative; }
+
+.popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.12);
+  z-index: 200;
+  min-width: 200px;
+  padding: 0.5rem 0;
+
+  &.popover-sm { min-width: 220px; }
+}
+
+.popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 0.4rem;
+}
+
+.btn-link {
+  background: none;
+  border: none;
+  color: #4338ca;
+  font-size: 0.78rem;
+  cursor: pointer;
+  font-weight: 600;
+  &:hover { text-decoration: underline; }
+}
+
+.popover-section-label {
+  padding: 0.3rem 0.9rem 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+}
+
+.popover-check {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.45rem 0.9rem;
+  cursor: pointer;
+  font-size: 0.85rem;
+  color: var(--text-main);
+  user-select: none;
+  &:hover { background: var(--bg-hover); }
+
+  .check-box {
+    width: 16px; height: 16px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    &.checked { background: #4338ca; border-color: #4338ca; color: white; }
+  }
+
+  .temp-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+}
+
+.sort-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.9rem;
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+  &:hover { background: var(--bg-hover); color: var(--text-main); }
+  &.active { color: #4338ca; font-weight: 600; }
+}
+
+.more-option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  width: 100%;
+  padding: 0.55rem 0.9rem;
+  background: none;
+  border: none;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  text-align: left;
+  &:hover { background: var(--bg-hover); color: var(--text-main); }
+}
+
+.popover-footer {
+  padding: 0.5rem 0.9rem;
+  border-top: 1px solid var(--border-color);
+  margin-top: 0.4rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn-apply {
+  background: #4338ca;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  &:hover { background: #3730a3; }
+}
+
+// ── Count bar ─────────────────────────────────────────────────
+.count-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.75rem;
+}
+
+.filter-active-tag, .sort-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: rgba(67,56,202,0.08);
+  color: #4338ca;
+  border-radius: 4px;
+  padding: 0.1rem 0.5rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+
+  button {
+    background: none; border: none; cursor: pointer;
+    color: #4338ca; display: flex; align-items: center;
+    padding: 0;
+  }
+}
+
+// ── Contact list ──────────────────────────────────────────────
 .contacts-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 0.4rem;
+  flex: 1;
 }
 
 .contact-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
-  overflow: hidden;
-  box-shadow: none;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 1rem 1.5rem;
   cursor: pointer;
-  background: transparent;
-}
+  transition: border-color 0.12s, box-shadow 0.12s;
 
-.contact-info-summary {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-
-  .avatar {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    font-weight: 500;
-  }
-
-  .contact-text {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-  }
-
-  .contact-name {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: #1f2937;
-    margin: 0;
-  }
-
-  .contact-subtext {
-    font-size: 0.85rem;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-
-    .phone {
-      color: #6b7280;
-    }
-    
-    .separator {
-      color: #e5e7eb;
-    }
-
-    .details-link {
-      color: #2563eb;
-      text-decoration: none;
-      font-size: 0.8rem;
-      font-weight: 500;
-      
-      &:hover { text-decoration: underline; }
-    }
+  &:hover {
+    border-color: #4338ca;
+    box-shadow: 0 1px 6px rgba(67,56,202,0.1);
   }
 }
 
-/* Skeleton Loader */
-.skeleton-list {
+.avatar {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.9rem; font-weight: 600;
+  flex-shrink: 0;
+}
+
+.contact-info {
+  flex: 1;
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 0;
+  gap: 0.15rem;
 }
 
-.skeleton-card {
+.contact-name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-sub {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.contact-meta {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 1rem 1.5rem;
-  background: white;
-  border-bottom: 1px solid #f3f4f6;
-  animation: pulse-skeleton 1.5s infinite;
-  
-  .skeleton-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: #e5e7eb;
-    margin-right: 1rem;
-  }
-  
-  .skeleton-text {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-  }
-  
-  .skeleton-line {
-    height: 10px;
-    background: #e5e7eb;
-    border-radius: 4px;
-    
-    &.title { width: 120px; height: 14px; }
-    &.subtitle { width: 200px; }
-  }
-  
-  .skeleton-action {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
-    background: #e5e7eb;
-  }
+  gap: 0.4rem;
+  flex-shrink: 0;
 }
 
-@keyframes pulse-skeleton {
-  0% { opacity: 0.6; }
-  50% { opacity: 1; }
-  100% { opacity: 0.6; }
+.temp-chip {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
 }
+
+.source-chip {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-color);
+  padding: 0.12rem 0.45rem;
+  border-radius: 4px;
+}
+
+.chevron { color: var(--text-muted); flex-shrink: 0; }
+
+// ── Skeleton ──────────────────────────────────────────────────
+.skeleton-list { display: flex; flex-direction: column; gap: 0.4rem; }
+.skeleton-card {
+  display: flex; align-items: center; gap: 1rem;
+  padding: 0.85rem 1.25rem;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  animation: pulse-sk 1.5s infinite;
+
+  .skeleton-avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--border-color); flex-shrink: 0; }
+  .skeleton-text { flex: 1; display: flex; flex-direction: column; gap: 0.4rem; }
+  .skeleton-line { height: 10px; background: var(--border-color); border-radius: 4px; &.title { width: 140px; height: 13px; } &.subtitle { width: 200px; } }
+  .skeleton-action { width: 20px; height: 20px; background: var(--border-color); border-radius: 4px; }
+}
+@keyframes pulse-sk { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
 
 .empty-state {
   padding: 3rem;
   text-align: center;
-  color: #6b7280;
-  font-size: 0.9rem;
-  background: white;
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  background: var(--bg-secondary);
   border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  margin-top: 1rem;
-}
-
-.card-actions {
-  color: #9ca3af;
-}
-
-.card-body {
-  padding: 1.5rem;
-  border-top: 1px solid #e5e7eb;
-  background: #f9fafb;
-}
-
-.form-title {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1f2937;
-  margin-bottom: 1rem;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-}
-
-.form-input {
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--bg-tertiary);
   border: 1px solid var(--border-color);
-  border-radius: 6px;
-  font-size: 0.9rem;
-  color: var(--text-main);
-  outline: none;
-
-  &::placeholder {
-    color: var(--text-muted);
-  }
-
-  &:focus {
-    border-color: var(--primary);
-  }
-}
-
-.phone-input-group {
-  display: flex;
-  gap: 0.5rem;
-  
-  .country-selector-wrapper {
-    position: relative;
-    width: 100px;
-  }
-
-  .country-selector {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0.75rem;
-    background: var(--bg-tertiary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    font-size: 0.9rem;
-    color: var(--text-main);
-    cursor: pointer;
-    user-select: none;
-    
-    &:hover { background: var(--bg-hover); }
-  }
-
-  .country-dropdown-menu {
-    position: absolute;
-    top: 100%;
-    left: 0;
-    margin-top: 4px;
-    width: 250px;
-    background: var(--bg-secondary);
-    border: 1px solid var(--border-color);
-    border-radius: 6px;
-    box-shadow: 0 4px 6px -1px var(--shadow-sm), 0 2px 4px -1px var(--shadow-sm);
-    z-index: 10;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-  }
-
-  .country-search-wrapper {
-    display: flex;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--border-color);
-    background: var(--bg-secondary);
-
-    .search-icon-sm {
-      color: var(--text-muted);
-      margin-right: 0.5rem;
-    }
-
-    input {
-      border: none;
-      background: transparent;
-      outline: none;
-      font-size: 0.85rem;
-      color: var(--text-main);
-      width: 100%;
-      &::placeholder { color: var(--text-muted); }
-    }
-  }
-
-  .country-list {
-    max-height: 200px;
-    overflow-y: auto;
-    
-    .country-item {
-      display: flex;
-      align-items: center;
-      gap: 0.75rem;
-      padding: 0.5rem 0.75rem;
-      cursor: pointer;
-      font-size: 0.85rem;
-      
-      &:hover { background: var(--bg-hover); }
-      
-      .c-code {
-        font-weight: 600;
-        color: var(--text-main);
-        min-width: 20px;
-      }
-      
-      .c-name {
-        color: var(--text-muted);
-      }
-    }
-  }
-  
-  .phone-input {
-    flex: 1;
-  }
-}
-
-.form-actions {
-  display: flex;
-  justify-content: flex-start;
-}
-
-.btn-update {
-  background: var(--primary);
-  color: white;
-  padding: 0.6rem 1.2rem;
-  border-radius: 6px;
-  border: none;
-  font-weight: 500;
-  font-size: 0.9rem;
-  cursor: pointer;
-  
-  &:hover { background: var(--primary-hover); }
 }
 
 .pagination {
-  margin-top: 1rem;
-  padding: 1rem 0;
-  font-size: 0.85rem;
+  margin-top: 0.5rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
+  padding: 0.5rem 0;
 }
 
-.loading-state {
-  text-align: center;
-  padding: 3rem;
-  color: var(--text-muted);
+// ── Send modal ────────────────────────────────────────────────
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.4);
+  z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 1rem;
 }
+
+.modal-box {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  width: 100%; max-width: 420px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+  overflow: hidden;
+}
+
+.modal-head {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.92rem; font-weight: 700; color: var(--text-main);
+
+  button { background: none; border: none; cursor: pointer; color: var(--text-muted); display: flex; align-items: center; &:hover { color: var(--text-main); } }
+}
+
+.modal-body { padding: 1rem 1.25rem; }
+
+.modal-hint {
+  font-size: 0.83rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.modal-search {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  margin-bottom: 0.75rem;
+  &:focus-within { border-color: #4338ca; }
+  svg { color: var(--text-muted); flex-shrink: 0; }
+  input { flex: 1; border: none; background: none; outline: none; font-size: 0.85rem; color: var(--text-main); &::placeholder { color: var(--text-muted); } }
+}
+
+.modal-contact-list { display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; }
+
+.modal-contact-item {
+  display: flex; align-items: center; gap: 0.75rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 6px;
+  background: none; border: none; cursor: pointer; text-align: left; width: 100%;
+  &:hover { background: var(--bg-hover); }
+
+  .mc-avatar { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 600; flex-shrink: 0; }
+  .mc-info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+  .mc-name { font-size: 0.85rem; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mc-phone { font-size: 0.75rem; color: var(--text-muted); }
+  .mc-icon { color: #4338ca; flex-shrink: 0; }
+}
+
+.empty-modal { padding: 1.5rem; text-align: center; font-size: 0.83rem; color: var(--text-muted); }
 </style>
