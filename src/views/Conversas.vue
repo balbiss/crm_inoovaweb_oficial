@@ -34,7 +34,8 @@ import {
   Sparkles,
   Loader2,
   BotOff,
-  Bot
+  Bot,
+  CreditCard
 } from '@lucide/vue'
 
 import api from '../api'
@@ -47,6 +48,7 @@ import EditContactModal from '../components/EditContactModal.vue'
 import MergeContactModal from '../components/MergeContactModal.vue'
 import DeleteContactModal from '../components/DeleteContactModal.vue'
 import ScheduleMessageModal from '../components/ScheduleMessageModal.vue'
+import ChargeModal from '../components/ChargeModal.vue'
 
 const store = useConversationsStore()
 const route = useRoute()
@@ -203,6 +205,14 @@ const formatMessageTime = (isoString) => {
 const isEditModalOpen = ref(false)
 const isMergeModalOpen = ref(false)
 const isDeleteModalOpen = ref(false)
+const isChargeModalOpen = ref(false)
+
+const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
+const canGenerateCharge = computed(() => {
+  const dept = currentUser.department || 'corretor'
+  const role = currentUser.role || 'atendente'
+  return dept !== 'corretor' || role === 'empresa' || role === 'admin'
+})
 const isFilterPopoverOpen = ref(false)
 const isSortPopoverOpen = ref(false)
 
@@ -679,6 +689,7 @@ onUnmounted(() => {
           <button class="action-btn" title="Focar Mensagem" @click="focusMessageInput"><MessageCircle class="icon-sm" /></button>
           <button class="action-btn" title="Editar Contato" @click="openEditModal"><Edit2 class="icon-sm" /></button>
           <button class="action-btn" title="Mesclar Contato" @click="openMergeModal"><GitMerge class="icon-sm" /></button>
+          <button v-if="canGenerateCharge" class="action-btn charge" title="Gerar Cobrança" @click="isChargeModalOpen = true"><CreditCard class="icon-sm" /></button>
           <button class="action-btn danger" title="Apagar Contato" @click="openDeleteModal"><Trash2 class="icon-sm" /></button>
         </div>
       </div>
@@ -834,6 +845,7 @@ onUnmounted(() => {
     <EditContactModal :isOpen="isEditModalOpen" :contact="store.activeConversation?.contact" @close="isEditModalOpen = false" />
     <MergeContactModal :isOpen="isMergeModalOpen" :contact="store.activeConversation?.contact" @close="isMergeModalOpen = false" />
     <DeleteContactModal :isOpen="isDeleteModalOpen" :contact="store.activeConversation?.contact" @close="isDeleteModalOpen = false" @deleted="handleContactDeleted" />
+    <ChargeModal v-if="store.activeConversation?.contact" :show="isChargeModalOpen" :contact="store.activeConversation.contact" @close="isChargeModalOpen = false" />
     
     <ScheduleMessageModal 
       :isOpen="isScheduleModalOpen" 
@@ -1714,10 +1726,13 @@ onUnmounted(() => {
       &.danger {
         color: #ef4444;
         background: rgba(239, 68, 68, 0.1);
-        
-        &:hover {
-          background: rgba(239, 68, 68, 0.2);
-        }
+        &:hover { background: rgba(239, 68, 68, 0.2); }
+      }
+
+      &.charge {
+        color: #059669;
+        background: rgba(5, 150, 105, 0.1);
+        &:hover { background: rgba(5, 150, 105, 0.2); }
       }
     }
   }

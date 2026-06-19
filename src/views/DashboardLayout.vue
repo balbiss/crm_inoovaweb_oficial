@@ -36,7 +36,8 @@ import {
   HelpCircle,
   CalendarDays,
   Badge,
-  TrendingUp
+  TrendingUp,
+  CreditCard
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -520,6 +521,7 @@ const handleLogout = () => {
             <router-link to="/settings/inboxes" class="nav-item sub-item"><Inbox class="icon-sm" /> Caixas de Entrada</router-link>
             <router-link to="/settings/tags" class="nav-item sub-item" active-class="active"><Tag class="icon-sm" /> Etiquetas</router-link>
             <router-link v-if="isAdminOrEmpresa" to="/settings/portals" class="nav-item sub-item" active-class="active"><TrendingUp class="icon-sm" /> Portais Imobiliários</router-link>
+            <router-link v-if="isAdminOrEmpresa" to="/settings/asaas" class="nav-item sub-item" active-class="active"><CreditCard class="icon-sm" /> Cobrança (Asaas)</router-link>
           </div>
         </div>
       </nav>

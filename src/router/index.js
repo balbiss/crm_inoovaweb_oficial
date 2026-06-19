@@ -163,6 +163,12 @@ const router = createRouter({
           component: () => import('../views/settings/Portals.vue'),
           meta: { requiresOwner: true }
         },
+        {
+          path: 'settings/asaas',
+          name: 'SettingsAsaas',
+          component: () => import('../views/settings/Asaas.vue'),
+          meta: { requiresOwner: true }
+        },
         // Rotas abertas a todos
         {
           path: 'funil',
