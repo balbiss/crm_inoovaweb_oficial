@@ -24,10 +24,7 @@ import {
   Kanban,
   Briefcase,
   User,
-  Keyboard,
   Palette,
-  FileText,
-  ScrollText,
   Power,
   Sun,
   Moon,
@@ -551,11 +548,8 @@ const handleLogout = () => {
           
           <div class="menu-divider"></div>
           
-          <a href="#" class="menu-item"><Keyboard class="icon-sm" /> Atalhos do teclado</a>
           <a href="#" class="menu-item"><User class="icon-sm" /> Configurações do Perfil</a>
           <a href="#" class="menu-item" @click.prevent="openThemePalette"><Palette class="icon-sm" /> Alterar Tema</a>
-          <a href="#" class="menu-item"><FileText class="icon-sm" /> Ler documentação</a>
-          <a href="#" class="menu-item"><ScrollText class="icon-sm" /> Notas de versão</a>
           <a href="#" class="menu-item logout" @click="handleLogout"><Power class="icon-sm" /> Encerrar sessão</a>
         </div>
 
