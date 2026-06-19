@@ -92,6 +92,26 @@ const cancelScheduledMessage = async (msgId) => {
   }
 }
 
+const DEPT_LABELS = {
+  corretor:    'Corretores',
+  suporte:     'Suporte',
+  financeiro:  'Financeiro',
+  manutencao:  'Manutenção',
+}
+
+const agentsByDepartment = computed(() => {
+  const groups = {}
+  ;(store.agents || []).forEach(a => {
+    const dept = a.department || 'corretor'
+    if (!groups[dept]) groups[dept] = []
+    groups[dept].push(a)
+  })
+  // ordem fixa de exibição
+  return ['corretor', 'suporte', 'financeiro', 'manutencao']
+    .filter(d => groups[d]?.length)
+    .map(d => ({ dept: d, label: DEPT_LABELS[d] || d, agents: groups[d] }))
+})
+
 const isAssigning = ref(false)
 
 const handleAssign = async (userId) => {
@@ -692,16 +712,18 @@ onUnmounted(() => {
           <h3>Atendente</h3>
         </div>
         <div class="card-body" style="padding-top: 0.5rem; padding-bottom: 1rem;">
-          <select 
+          <select
             class="assign-select"
             :value="store.activeConversation?.assignee_id || ''"
             @change="handleAssign($event.target.value)"
             :disabled="isAssigning"
           >
             <option value="">Nenhum (Não atribuído)</option>
-            <option v-for="agent in store.agents" :key="agent.id" :value="agent.id">
-              {{ agent.first_name }} {{ agent.last_name }}
-            </option>
+            <optgroup v-for="group in agentsByDepartment" :key="group.dept" :label="'— ' + group.label">
+              <option v-for="agent in group.agents" :key="agent.id" :value="agent.id">
+                {{ agent.first_name }} {{ agent.last_name }}
+              </option>
+            </optgroup>
           </select>
         </div>
       </div>
