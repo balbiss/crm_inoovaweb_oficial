@@ -134,25 +134,6 @@ const saveAgent = async () => {
         </div>
 
         <div class="input-group">
-          <label>Departamento</label>
-          <div class="dept-options">
-            <label
-              v-for="dept in DEPARTMENTS"
-              :key="dept.value"
-              class="dept-option"
-              :class="{ active: form.department === dept.value }"
-            >
-              <input type="radio" :value="dept.value" v-model="form.department" />
-              <span class="dept-dot" :class="'dept-' + dept.value"></span>
-              <span class="dept-info">
-                <strong>{{ dept.label }}</strong>
-                <small>{{ dept.desc }}</small>
-              </span>
-            </label>
-          </div>
-        </div>
-
-        <div class="input-group">
           <label>E-mail de Login</label>
           <input type="email" v-model="form.email" required placeholder="joao@imobiliaria.com" />
         </div>
@@ -170,6 +151,25 @@ const saveAgent = async () => {
                 <Shuffle class="icon-sm" />
               </button>
             </div>
+          </div>
+        </div>
+
+        <div class="input-group">
+          <label>Departamento</label>
+          <div class="dept-options">
+            <label
+              v-for="dept in DEPARTMENTS"
+              :key="dept.value"
+              class="dept-option"
+              :class="{ active: form.department === dept.value }"
+            >
+              <input type="radio" :value="dept.value" v-model="form.department" />
+              <span class="dept-dot" :class="'dept-' + dept.value"></span>
+              <span class="dept-info">
+                <strong>{{ dept.label }}</strong>
+                <small>{{ dept.desc }}</small>
+              </span>
+            </label>
           </div>
         </div>
         
@@ -286,7 +286,7 @@ const saveAgent = async () => {
 <style lang="scss" scoped>
 .page-container {
   padding: 2rem;
-  padding-bottom: 6rem; // espaço para bottom bar
+  padding-bottom: 8rem;
   background: var(--bg-primary);
   min-height: 100%;
 }
