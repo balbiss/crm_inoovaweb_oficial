@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
 import { brand } from '../config/brand'
+import { Eye, EyeOff } from 'lucide-vue-next'
 
 const router = useRouter()
 
@@ -12,6 +13,7 @@ const brandMain = words.slice(0, -1).join(' ')
 const brandAccent = words[words.length - 1]
 const email = ref('')
 const password = ref('')
+const showPassword = ref(false)
 const isLoading = ref(false)
 
 const handleLogin = async () => {
@@ -88,13 +90,19 @@ const handleLogin = async () => {
 
         <div class="form-group">
           <label for="password">Senha</label>
-          <input 
-            type="password" 
-            id="password" 
-            v-model="password" 
-            placeholder="••••••••" 
-            required 
-          />
+          <div class="input-eye">
+            <input
+              :type="showPassword ? 'text' : 'password'"
+              id="password"
+              v-model="password"
+              placeholder="••••••••"
+              required
+            />
+            <button type="button" class="eye-btn" @click="showPassword = !showPassword" tabindex="-1">
+              <EyeOff v-if="showPassword" :size="18" />
+              <Eye v-else :size="18" />
+            </button>
+          </div>
         </div>
 
         <div class="form-actions">
@@ -186,11 +194,33 @@ const handleLogin = async () => {
     font-size: 0.95rem;
     outline: none;
     transition: all 0.2s;
+    width: 100%;
 
     &:focus {
       border-color: var(--primary);
       box-shadow: 0 0 0 3px var(--input-focus);
     }
+  }
+}
+
+.input-eye {
+  position: relative;
+  display: flex;
+  align-items: center;
+
+  input { padding-right: 2.75rem; }
+
+  .eye-btn {
+    position: absolute;
+    right: 0.75rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    padding: 0;
+    &:hover { color: var(--primary); }
   }
 }
 
