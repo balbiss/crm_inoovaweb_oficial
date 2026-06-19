@@ -49,6 +49,7 @@ import MergeContactModal from '../components/MergeContactModal.vue'
 import DeleteContactModal from '../components/DeleteContactModal.vue'
 import ScheduleMessageModal from '../components/ScheduleMessageModal.vue'
 import ChargeModal from '../components/ChargeModal.vue'
+import TransferModal from '../components/TransferModal.vue'
 
 const store = useConversationsStore()
 const route = useRoute()
@@ -115,6 +116,7 @@ const agentsByDepartment = computed(() => {
 })
 
 const isAssigning = ref(false)
+const showTransferModal = ref(false)
 
 const handleAssign = async (userId) => {
   if (!store.activeConversation) return
@@ -125,6 +127,20 @@ const handleAssign = async (userId) => {
   } catch (error) {
     console.error('Error assigning conversation:', error)
     Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao atribuir a conversa.', showConfirmButton: false, timer: 3500 })
+  } finally {
+    isAssigning.value = false
+  }
+}
+
+const handleTransfer = async ({ userId, note }) => {
+  if (!store.activeConversation) return
+  isAssigning.value = true
+  try {
+    await store.transferConversation(store.activeConversation.id, userId, note)
+    showTransferModal.value = false
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Conversa transferida!', showConfirmButton: false, timer: 3000 })
+  } catch {
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao transferir conversa.', showConfirmButton: false, timer: 3500 })
   } finally {
     isAssigning.value = false
   }
@@ -736,6 +752,13 @@ onUnmounted(() => {
               </option>
             </optgroup>
           </select>
+          <button
+            class="btn-transfer"
+            :disabled="!store.activeConversation?.assignee_id || isAssigning"
+            @click="showTransferModal = true"
+          >
+            Transferir com nota
+          </button>
         </div>
       </div>
       <div class="accordion-card">
@@ -846,6 +869,7 @@ onUnmounted(() => {
     <MergeContactModal :isOpen="isMergeModalOpen" :contact="store.activeConversation?.contact" @close="isMergeModalOpen = false" />
     <DeleteContactModal :isOpen="isDeleteModalOpen" :contact="store.activeConversation?.contact" @close="isDeleteModalOpen = false" @deleted="handleContactDeleted" />
     <ChargeModal v-if="store.activeConversation?.contact" :show="isChargeModalOpen" :contact="store.activeConversation.contact" @close="isChargeModalOpen = false" />
+    <TransferModal v-if="showTransferModal" :agents="store.agents" :currentAssigneeId="store.activeConversation?.assignee_id" @close="showTransferModal = false" @confirm="handleTransfer" />
     
     <ScheduleMessageModal 
       :isOpen="isScheduleModalOpen" 
@@ -1985,6 +2009,26 @@ onUnmounted(() => {
 .assign-select:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.btn-transfer {
+  margin-top: 0.5rem;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.45rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #4338ca;
+  background: rgba(67,56,202,0.07);
+  border: 1px solid rgba(67,56,202,0.2);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+  &:hover:not(:disabled) { background: rgba(67,56,202,0.14); }
+  &:disabled { opacity: 0.4; cursor: not-allowed; }
 }
 
 .attachments-gallery {

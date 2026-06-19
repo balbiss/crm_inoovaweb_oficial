@@ -3,27 +3,29 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import {
   MessageCircle, Users, Home, Building, CalendarDays, Kanban,
   TrendingUp, Badge, Settings, CreditCard, BrainCircuit, Bell,
-  BookOpen, ChevronRight, Search, Bot, Zap, Shield
+  BookOpen, ChevronRight, Search, Bot, Zap, Shield, ArrowRightLeft
 } from 'lucide-vue-next'
 
 const activeSection = ref('visao-geral')
 const searchQuery   = ref('')
 
 const sections = [
-  { id: 'visao-geral',    label: 'Visão Geral',         icon: BookOpen },
-  { id: 'conversas',      label: 'Conversas',           icon: MessageCircle },
-  { id: 'contatos',       label: 'Contatos / Leads',    icon: Users },
-  { id: 'imoveis',        label: 'Imóveis',             icon: Home },
-  { id: 'condominios',    label: 'Condomínios',         icon: Building },
-  { id: 'agendamentos',   label: 'Agendamentos',        icon: CalendarDays },
-  { id: 'funil',          label: 'Funil de Vendas',     icon: Kanban },
-  { id: 'relatorios',     label: 'Relatórios',          icon: TrendingUp },
-  { id: 'agentes',        label: 'Agentes',             icon: Badge },
-  { id: 'configuracoes',  label: 'Configurações',       icon: Settings },
-  { id: 'cobranca',       label: 'Cobrança (Asaas)',    icon: CreditCard },
+  { id: 'visao-geral',    label: 'Visão Geral',             icon: BookOpen },
+  { id: 'conversas',      label: 'Conversas',               icon: MessageCircle },
+  { id: 'matching',       label: 'Matching Lead ↔ Imóvel',  icon: Zap },
+  { id: 'transferencia',  label: 'Transferência de Conversa', icon: ArrowRightLeft },
+  { id: 'contatos',       label: 'Contatos / Leads',        icon: Users },
+  { id: 'imoveis',        label: 'Imóveis',                 icon: Home },
+  { id: 'condominios',    label: 'Condomínios',             icon: Building },
+  { id: 'agendamentos',   label: 'Agendamentos',            icon: CalendarDays },
+  { id: 'funil',          label: 'Funil de Vendas',         icon: Kanban },
+  { id: 'relatorios',     label: 'Relatórios',              icon: TrendingUp },
+  { id: 'agentes',        label: 'Agentes',                 icon: Badge },
+  { id: 'configuracoes',  label: 'Configurações',           icon: Settings },
+  { id: 'cobranca',       label: 'Cobrança (Asaas)',        icon: CreditCard },
   { id: 'ia',             label: 'Inteligência Artificial', icon: BrainCircuit },
-  { id: 'notificacoes',   label: 'Notificações Push',   icon: Bell },
-  { id: 'permissoes',     label: 'Permissões',          icon: Shield },
+  { id: 'notificacoes',   label: 'Notificações Push',       icon: Bell },
+  { id: 'permissoes',     label: 'Permissões',              icon: Shield },
 ]
 
 const filteredSections = ref(sections)
@@ -198,6 +200,99 @@ onUnmounted(() => document.querySelector('.manual-content')?.removeEventListener
             <li>Por tag</li>
             <li>Por temperatura do lead</li>
           </ul>
+        </section>
+
+        <div class="divider" />
+
+        <!-- ══════════════════════════════════════ MATCHING -->
+        <section id="matching">
+          <h1>Matching Automático Lead ↔ Imóvel</h1>
+          <p class="lead">Quando um novo imóvel é cadastrado, o sistema usa Inteligência Artificial para comparar automaticamente com todos os leads ativos e notifica os compatíveis via WhatsApp.</p>
+
+          <h2>Como funciona</h2>
+          <ol>
+            <li>Você cadastra um novo imóvel com tipo, bairro, quartos e preço</li>
+            <li>O sistema compara o imóvel com a <strong>intenção de busca</strong> de cada lead ativo</li>
+            <li>A IA (GPT) decide: "Este imóvel atende a intenção do lead?" (SIM ou NÃO)</li>
+            <li>Os leads compatíveis recebem automaticamente uma mensagem no WhatsApp com os detalhes do imóvel</li>
+            <li>Uma notificação aparece no painel: <strong>"X leads compatíveis foram notificados"</strong></li>
+          </ol>
+
+          <h2>Executar matching manualmente</h2>
+          <p>Para imóveis já cadastrados, você pode re-executar o matching a qualquer momento:</p>
+          <ol>
+            <li>Acesse <strong>Imóveis</strong></li>
+            <li>No card do imóvel, clique no botão <span class="badge yellow">⚡ Matching</span> (ícone de raio amarelo)</li>
+            <li>Aguarde a notificação com o resultado na tela</li>
+          </ol>
+
+          <h2>Configurar a intenção do lead</h2>
+          <p>O matching usa o campo <strong>Intenção</strong> do contato. Quanto mais detalhado, melhor o resultado:</p>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Exemplo de intenção bem preenchida</th><th>Resultado</th></tr></thead>
+              <tbody>
+                <tr><td>"Quer comprar apartamento de 2 quartos no Setor Bueno até R$ 400 mil"</td><td><span class="badge green">Match preciso</span></td></tr>
+                <tr><td>"Quer comprar imóvel"</td><td><span class="badge yellow">Match amplo</span></td></tr>
+                <tr><td>(vazio)</td><td><span class="badge gray">Não participa</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Para editar a intenção: abra o contato → clique em <strong>Editar atributos</strong> → campo "Intenção".</p>
+
+          <h2>Mensagem enviada ao lead</h2>
+          <p>O lead recebe automaticamente no WhatsApp uma mensagem como:</p>
+          <div class="code-block">
+            "João! Temos um novo Apartamento em Setor Bueno, 2 quartos por R$ 380.000 que pode ser exatamente o que você procura! Posso te contar mais detalhes?"
+          </div>
+
+          <h2>Requisitos</h2>
+          <ul>
+            <li>A chave da OpenAI deve estar configurada em <strong>Admin → Configurações → OpenAI API Key</strong></li>
+            <li>O lead deve ter o campo <strong>Intenção</strong> preenchido</li>
+            <li>O lead não deve estar com status <strong>Ganho (won)</strong></li>
+            <li>O lead deve ter uma conversa ativa com um inbox de WhatsApp associado</li>
+          </ul>
+        </section>
+
+        <div class="divider" />
+
+        <!-- ══════════════════════════════════════ TRANSFERÊNCIA -->
+        <section id="transferencia">
+          <h1>Transferência de Conversa entre Agentes</h1>
+          <p class="lead">Transfira uma conversa para outro corretor com uma nota de contexto — a nota aparece como mensagem privada no chat, visível apenas para a equipe.</p>
+
+          <h2>Como transferir</h2>
+          <ol>
+            <li>Abra a conversa que deseja transferir</li>
+            <li>No painel direito, em <strong>Atendente</strong>, você verá o corretor atual</li>
+            <li>Clique em <strong>"Transferir com nota"</strong></li>
+            <li>No modal, selecione o <strong>agente de destino</strong></li>
+            <li>Escreva a <strong>nota de contexto</strong> — explique o motivo da transferência e o que o próximo agente precisa saber</li>
+            <li>Clique em <strong>Transferir</strong></li>
+          </ol>
+
+          <h2>O que acontece após a transferência</h2>
+          <ul>
+            <li>A conversa é atribuída ao novo agente</li>
+            <li>O novo agente recebe uma <strong>notificação push</strong> e uma mensagem no WhatsApp pessoal</li>
+            <li>A nota de transferência aparece no chat como <strong>mensagem privada</strong> (fundo amarelado), visível apenas para a equipe — o lead não vê</li>
+            <li>A tag <strong>com_atendente</strong> é mantida indicando que há um corretor responsável</li>
+          </ul>
+
+          <h2>Atribuição rápida sem nota</h2>
+          <p>Se quiser apenas mudar o atendente sem escrever uma nota, use o <strong>dropdown de Atendente</strong> diretamente — a conversa é reatribuída imediatamente sem abrir o modal.</p>
+
+          <h2>Quem pode transferir</h2>
+          <p>Qualquer agente com acesso à conversa pode transferir. Corretores só veem suas próprias conversas, portanto só conseguem transferir conversas que já estão atribuídas a eles.</p>
+
+          <div class="info-card" style="margin-top: 1rem;">
+            <ArrowRightLeft :size="20" />
+            <div>
+              <strong>Dica de uso</strong>
+              <p>Use a transferência quando um corretor sai de férias, quando o lead precisa de outro tipo de atendimento (ex: corretor para financeiro), ou quando há troca de plantão.</p>
+            </div>
+          </div>
         </section>
 
         <div class="divider" />
@@ -841,6 +936,19 @@ table {
   &.gray   { background: rgba(107,114,128,0.1);  color: #6b7280; }
   &.blue   { background: rgba(59,130,246,0.1);   color: #2563eb; }
   &.red    { background: rgba(239,68,68,0.1);    color: #dc2626; }
+}
+
+.code-block {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-left: 3px solid #4338ca;
+  border-radius: 6px;
+  padding: 0.8rem 1rem;
+  font-size: 0.83rem;
+  color: var(--text-main);
+  font-style: italic;
+  margin: 0.5rem 0 0.8rem;
+  line-height: 1.6;
 }
 
 .note {

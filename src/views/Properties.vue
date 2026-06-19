@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Search, Filter, Plus, MapPin, Grid, BedDouble, Car, Edit2, Trash2, Map } from '@lucide/vue'
+import { Filter, Plus, MapPin, Grid, BedDouble, Car, Edit2, Trash2, Map, Zap } from '@lucide/vue'
 import api from '../api'
 import { usePropertiesStore } from '../store/properties'
 import { storeToRefs } from 'pinia'
@@ -56,6 +56,19 @@ const deleteProperty = async (id) => {
       }
     }
   })
+}
+
+const triggerMatch = async (propertyId) => {
+  try {
+    await api.post(`/properties/${propertyId}/trigger_match`)
+    import('sweetalert2').then(({ default: Swal }) => {
+      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Matching iniciado!', text: 'Aguarde a notificação com o resultado.', showConfirmButton: false, timer: 4000 })
+    })
+  } catch {
+    import('sweetalert2').then(({ default: Swal }) => {
+      Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao iniciar matching.', showConfirmButton: false, timer: 3000 })
+    })
+  }
 }
 
 const bulkDelete = async () => {
@@ -182,6 +195,7 @@ const bulkDelete = async () => {
             <div class="action-buttons">
               <button class="circle-btn bg-danger" @click="deleteProperty(property.id)" title="Excluir"><Trash2 class="icon-sm" /></button>
               <button class="circle-btn" @click="openMap(property)" title="Ver no Mapa"><Map class="icon-sm" /></button>
+              <button class="circle-btn bg-match" @click="triggerMatch(property.id)" title="Executar Matching de Leads"><Zap class="icon-sm" /></button>
             </div>
           </div>
         </div>
@@ -479,6 +493,7 @@ const bulkDelete = async () => {
           cursor: pointer;
           
           &.bg-danger { background: #ef4444; }
+          &.bg-match  { background: #f59e0b; }
         }
       }
     }

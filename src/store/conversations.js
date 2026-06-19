@@ -130,7 +130,7 @@ export const useConversationsStore = defineStore('conversations', {
         const response = await api.put(`/conversations/${conversationId}`, {
           conversation: { user_id: userId }
         })
-        
+
         const convIndex = this.conversations.findIndex(c => c.id === conversationId)
         if (convIndex !== -1) {
           // Update the local conversation state
@@ -139,6 +139,24 @@ export const useConversationsStore = defineStore('conversations', {
         }
       } catch (error) {
         console.error('Error assigning conversation:', error)
+        throw error
+      }
+    },
+
+    async transferConversation(conversationId, userId, note) {
+      try {
+        const response = await api.put(`/conversations/${conversationId}`, {
+          conversation: { user_id: userId },
+          transfer_note: note
+        })
+        const convIndex = this.conversations.findIndex(c => c.id === conversationId)
+        if (convIndex !== -1) {
+          this.conversations[convIndex].assignee_id = response.data.assignee_id
+          this.conversations[convIndex].assignee = response.data.assignee
+        }
+        return response.data
+      } catch (error) {
+        console.error('Error transferring conversation:', error)
         throw error
       }
     },
