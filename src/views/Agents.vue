@@ -2,6 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { Plus, Edit2, Trash2, Lock, Unlock, ShieldAlert, RefreshCw } from 'lucide-vue-next'
+
+const DEPT_CONFIG = {
+  corretor:    { label: 'Corretor',    color: '#4338ca', bg: 'rgba(67,56,202,0.1)' },
+  suporte:     { label: 'Suporte',     color: '#059669', bg: 'rgba(5,150,105,0.1)' },
+  financeiro:  { label: 'Financeiro',  color: '#d97706', bg: 'rgba(217,119,6,0.1)' },
+  manutencao:  { label: 'Manutenção',  color: '#ea580c', bg: 'rgba(234,88,12,0.1)' },
+}
 import api from '../api'
 import { useAgentsStore } from '../store/agents'
 import { storeToRefs } from 'pinia'
@@ -80,8 +87,8 @@ const toggleRoundRobin = async (agent) => {
     <div class="queue-card" v-if="queueAgents.length > 0">
       <div class="queue-header">
         <RefreshCw class="icon-sm" />
-        <span>Fila de Rodízio Automático</span>
-        <span class="queue-hint">O próximo lead humano vai para o 1º da fila</span>
+        <span>Fila de Rodízio — Corretores</span>
+        <span class="queue-hint">Novos leads são atribuídos ao 1º da fila</span>
       </div>
       <div class="queue-list">
         <div v-for="(agent, idx) in queueAgents" :key="agent.id" class="queue-item">
@@ -102,9 +109,9 @@ const toggleRoundRobin = async (agent) => {
           <tr>
             <th>Status</th>
             <th>Nome</th>
+            <th>Departamento</th>
             <th>E-mail</th>
             <th>WhatsApp</th>
-            <th>Permissões</th>
             <th>Rodízio</th>
             <th width="120">Ações</th>
           </tr>
@@ -130,15 +137,25 @@ const toggleRoundRobin = async (agent) => {
                 {{ agent.status === 'blocked' ? 'Bloqueado' : 'Ativo' }}
               </span>
             </td>
-            <td class="font-medium">{{ agent.first_name }} {{ agent.last_name }}</td>
+            <td class="font-medium">
+              {{ agent.first_name }} {{ agent.last_name }}
+              <div v-if="agent.role === 'empresa' || agent.role === 'admin'" class="badge-admin inline">
+                <ShieldAlert class="icon-xs" /> Dono
+              </div>
+            </td>
+            <td>
+              <span
+                class="dept-badge"
+                :style="{
+                  color: (DEPT_CONFIG[agent.department] || DEPT_CONFIG.corretor).color,
+                  background: (DEPT_CONFIG[agent.department] || DEPT_CONFIG.corretor).bg
+                }"
+              >
+                {{ (DEPT_CONFIG[agent.department] || DEPT_CONFIG.corretor).label }}
+              </span>
+            </td>
             <td>{{ agent.email }}</td>
             <td>{{ agent.phone || '-' }}</td>
-            <td>
-              <div v-if="agent.role === 'empresa' || agent.role === 'admin'" class="badge-admin">
-                <ShieldAlert class="icon-xs" /> Dono / Admin
-              </div>
-              <div v-else class="text-xs text-muted">Padrão</div>
-            </td>
             <td>
               <button
                 class="toggle-btn"
@@ -374,6 +391,16 @@ const toggleRoundRobin = async (agent) => {
   padding: 0.2rem 0.6rem;
   border-radius: 4px;
   font-size: 0.7rem;
+  font-weight: 600;
+  &.inline { margin-left: 0.4rem; vertical-align: middle; }
+}
+
+.dept-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.65rem;
+  border-radius: 12px;
+  font-size: 0.78rem;
   font-weight: 600;
 }
 

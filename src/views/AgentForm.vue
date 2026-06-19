@@ -11,12 +11,20 @@ const isEditing = ref(false)
 const isLoading = ref(false)
 const showPassword = ref(false)
 
+const DEPARTMENTS = [
+  { value: 'corretor',    label: 'Corretor',    desc: 'Atende novos leads de venda e locação' },
+  { value: 'suporte',     label: 'Suporte',     desc: 'Atende clientes com problemas no imóvel' },
+  { value: 'financeiro',  label: 'Financeiro',  desc: 'Cobranças, boletos e contratos' },
+  { value: 'manutencao',  label: 'Manutenção',  desc: 'Reparos e serviços técnicos' },
+]
+
 const form = ref({
   first_name: '',
   last_name: '',
   email: '',
   phone: '',
   password: '',
+  department: 'corretor',
   status: 'active',
   permissions: {
     admin: false,
@@ -38,7 +46,8 @@ const fetchAgent = async (id) => {
       last_name: data.last_name || '',
       email: data.email || '',
       phone: data.phone || '',
-      password: '', // Don't pre-fill password
+      password: '',
+      department: data.department || 'corretor',
       status: data.status || 'active',
       permissions: data.permissions || {
         admin: false,
@@ -106,8 +115,8 @@ const saveAgent = async () => {
     <div v-else class="form-grid">
       <!-- Coluna da Esquerda: Dados Principais -->
       <div class="card form-card">
-        <h3>Dados do Corretor</h3>
-        
+        <h3>Dados do Agente</h3>
+
         <div class="input-row">
           <div class="input-group">
             <label>Nome</label>
@@ -122,6 +131,25 @@ const saveAgent = async () => {
         <div class="input-group">
           <label>WhatsApp</label>
           <input type="tel" v-model="form.phone" placeholder="(11) 99999-9999" />
+        </div>
+
+        <div class="input-group">
+          <label>Departamento</label>
+          <div class="dept-options">
+            <label
+              v-for="dept in DEPARTMENTS"
+              :key="dept.value"
+              class="dept-option"
+              :class="{ active: form.department === dept.value }"
+            >
+              <input type="radio" :value="dept.value" v-model="form.department" />
+              <span class="dept-dot" :class="'dept-' + dept.value"></span>
+              <span class="dept-info">
+                <strong>{{ dept.label }}</strong>
+                <small>{{ dept.desc }}</small>
+              </span>
+            </label>
+          </div>
         </div>
 
         <div class="input-group">
@@ -398,4 +426,40 @@ const saveAgent = async () => {
 .icon-sm { width: 16px; height: 16px; }
 .text-muted { color: var(--text-muted); }
 .text-xs { font-size: 0.75rem; }
+
+.dept-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.dept-option {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+  input[type="radio"] { display: none; }
+  &.active {
+    border-color: var(--primary);
+    background: rgba(67,56,202,0.04);
+  }
+  &:hover { border-color: var(--primary); }
+}
+.dept-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  &.dept-corretor   { background: #4338ca; }
+  &.dept-suporte    { background: #10b981; }
+  &.dept-financeiro { background: #f59e0b; }
+  &.dept-manutencao { background: #f97316; }
+}
+.dept-info {
+  display: flex; flex-direction: column; gap: 0.1rem;
+  strong { font-size: 0.88rem; color: var(--text-main); }
+  small  { font-size: 0.75rem; color: var(--text-muted); }
+}
 </style>
