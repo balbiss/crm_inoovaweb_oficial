@@ -100,3 +100,12 @@ src/
 ## Repositório
 GitHub: `https://github.com/balbiss/crm_inoovaweb_oficial`
 Branch principal: `main`
+
+## Integração com Backend
+Este frontend se comunica com um **backend Rails separado** em outro repositório:
+- Repositório backend: `https://github.com/balbiss/crm_backend_inoovaweb_oficial`
+- Pasta local do backend: `C:\Users\inoov\crm_backend_check`
+- O frontend chama a API REST do backend via Axios (`src/api.js`)
+- WebSocket via ActionCable (`/cable`)
+- Em produção, ambos sobem como serviços separados no mesmo Docker Swarm no Portainer
+- Para qualquer mudança que envolva nova rota, novo campo ou nova lógica de negócio, é necessário alterar **os dois repositórios**
