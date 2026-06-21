@@ -787,4 +787,54 @@ const tempLabel = (t) => ({ hot: 'Quente', warm: 'Morno', cold: 'Frio' }[t] || '
 }
 
 .empty-modal { padding: 1.5rem; text-align: center; font-size: 0.83rem; color: var(--text-muted); }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .search-box input {
+    width: 100%;
+  }
+
+  .search-box {
+    width: 100%;
+  }
+
+  .contact-card {
+    padding: 0.75rem;
+    gap: 0.75rem;
+  }
+
+  .card-actions {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .filter-popover,
+  .sort-popover,
+  .more-popover {
+    right: auto;
+    left: 0;
+    width: 90vw;
+    max-width: 320px;
+  }
+
+  .send-modal-box {
+    width: 95vw;
+    max-height: 90vh;
+  }
+}
 </style>

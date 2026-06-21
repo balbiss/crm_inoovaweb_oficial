@@ -38,7 +38,9 @@ import {
   Badge,
   TrendingUp,
   CreditCard,
-  BookOpen
+  BookOpen,
+  Menu,
+  X
 } from 'lucide-vue-next'
 
 const router = useRouter()
@@ -47,6 +49,10 @@ const isSettingsOpen = ref(false)
 const showUserMenu = ref(false)
 const autoOffline = ref(false)
 const isConversasOpen = ref(true)
+const isMobileSidebarOpen = ref(false)
+
+const toggleMobileSidebar = () => { isMobileSidebarOpen.value = !isMobileSidebarOpen.value }
+const closeMobileSidebar = () => { isMobileSidebarOpen.value = false }
 
 // Notification Logic
 const notifications = ref([])
@@ -388,8 +394,11 @@ const handleLogout = () => {
 
 <template>
   <div class="chatwoot-layout">
+    <!-- Mobile overlay -->
+    <div v-if="isMobileSidebarOpen" class="mobile-overlay" @click="closeMobileSidebar"></div>
+
     <!-- Primary Sidebar -->
-    <aside class="sidebar">
+    <aside class="sidebar" :class="{ 'mobile-open': isMobileSidebarOpen }">
       <!-- Workspace Header -->
       <div class="workspace-header">
         <div class="workspace-info">
@@ -591,7 +600,14 @@ const handleLogout = () => {
 
     <!-- Main Content Area -->
     <main class="main-content">
-      <router-view></router-view>
+      <div class="mobile-topbar">
+        <button class="mobile-menu-btn" @click="toggleMobileSidebar">
+          <X v-if="isMobileSidebarOpen" class="icon" />
+          <Menu v-else class="icon" />
+        </button>
+        <span class="mobile-brand">{{ accountName() }}</span>
+      </div>
+      <router-view @click="closeMobileSidebar"></router-view>
     </main>
 
     <!-- Theme Command Palette -->
@@ -1078,6 +1094,68 @@ const handleLogout = () => {
   overflow-x: hidden;
   min-width: 0;
   height: 100%;
+}
+
+.mobile-topbar {
+  display: none;
+}
+
+.mobile-overlay {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    left: -260px;
+    top: 0;
+    bottom: 0;
+    z-index: 300;
+    transition: left 0.25s ease;
+    width: 260px;
+
+    &.mobile-open {
+      left: 0;
+    }
+  }
+
+  .mobile-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 299;
+  }
+
+  .mobile-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+
+    .mobile-menu-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      color: var(--text-main);
+      .icon { width: 22px; height: 22px; }
+    }
+
+    .mobile-brand {
+      font-weight: 600;
+      font-size: 0.95rem;
+      color: var(--text-main);
+    }
+  }
 }
 
 .content-area {

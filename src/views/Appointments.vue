@@ -431,4 +431,37 @@ const formatTime = (datetime) => {
 .icon-sm { width: 16px; height: 16px; }
 .text-center { text-align: center; }
 .py-4 { padding-top: 1.5rem; padding-bottom: 1.5rem; }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .page-header .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+
+    h1 { font-size: 1.2rem; }
+  }
+
+  .filters-card {
+    padding: 1rem;
+    margin-bottom: 1rem;
+
+    .filters-grid {
+      grid-template-columns: 1fr;
+      gap: 0.75rem;
+
+      .col-2 { grid-column: span 1; }
+    }
+  }
+
+  .filters-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+
+    button { width: 100%; justify-content: center; }
+  }
+}
 </style>

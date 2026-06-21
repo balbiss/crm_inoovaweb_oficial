@@ -696,4 +696,19 @@ const funnelItems = computed(() => {
   .grid-2-3 { grid-template-columns: 1fr; }
   .today-leads-grid { grid-template-columns: 1fr; }
 }
+
+@media (max-width: 768px) {
+  .page-container, .dashboard-container {
+    padding: 1rem;
+  }
+
+  .grid-4 { grid-template-columns: repeat(2, 1fr); gap: 0.5rem; }
+  .grid-2-3 { grid-template-columns: 1fr; }
+  .today-leads-grid { grid-template-columns: 1fr; }
+
+  .stat-card {
+    padding: 1rem;
+    .stat-value { font-size: 1.5rem; }
+  }
+}
 </style>

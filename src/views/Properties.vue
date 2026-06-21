@@ -512,4 +512,44 @@ const bulkDelete = async () => {
 
 .icon-sm { width: 16px; height: 16px; }
 .icon-xs { width: 14px; height: 14px; }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .filter-card {
+    padding: 1rem;
+  }
+
+  .actions-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+
+    .left-actions, .right-actions {
+      width: 100%;
+      flex-wrap: wrap;
+    }
+  }
+
+  .property-card {
+    flex-direction: column;
+    gap: 0.75rem;
+
+    .image-col .image-wrapper {
+      width: 100%;
+      height: 180px;
+    }
+
+    .checkbox-col {
+      display: none;
+    }
+  }
+
+  .card-actions {
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+}
 </style>

@@ -56,6 +56,16 @@ const route = useRoute()
 const newMessageText = ref('')
 const isPrivateMessage = ref(false)
 const isEmojiPickerOpen = ref(false)
+const mobileView = ref('list') // 'list' | 'chat' | 'details'
+
+const openConversationMobile = (convId) => {
+  store.setActiveConversation(convId)
+  mobileView.value = 'chat'
+}
+
+const backToList = () => {
+  mobileView.value = 'list'
+}
 
 const isScheduleModalOpen = ref(false)
 const scheduledMessages = ref([])
@@ -440,7 +450,7 @@ onUnmounted(() => {
 <template>
   <div class="conversations-container">
     <!-- Middle Pane: Conversation List -->
-    <div class="conv-list-pane">
+    <div class="conv-list-pane" :class="{ 'mobile-hidden': mobileView !== 'list' }">
       <div class="list-header">
         <div class="header-top">
           <h2 style="text-transform: capitalize;">{{ route.params.filter ? route.params.filter.replace('-', ' ') : 'Todas as conversas' }} <span class="badge">Abertas</span></h2>
@@ -492,7 +502,7 @@ onUnmounted(() => {
           v-for="conv in store.filteredConversations" 
           :key="conv.id" 
           :class="['conv-item', { unread: conv.unread > 0, active: conv.id === store.activeConversationId }]"
-          @click="store.setActiveConversation(conv.id)"
+          @click="openConversationMobile(conv.id)"
         >
           <div class="conv-avatar" :style="{ backgroundColor: conv.contact.avatarBg, color: 'white', overflow: 'hidden' }">
             <img v-if="conv.contact.avatar_url" :src="conv.contact.avatar_url" alt="avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
@@ -529,9 +539,12 @@ onUnmounted(() => {
     </div>
 
     <!-- Main Chat Pane -->
-    <div class="chat-pane">
+    <div class="chat-pane" :class="{ 'mobile-hidden': mobileView === 'list' }">
       <div class="chat-header" v-if="store.activeConversation">
         <div class="chat-title">
+          <button class="btn-back-mobile" @click="backToList" title="Voltar">
+            ←
+          </button>
           <div class="conv-avatar" :style="{ backgroundColor: store.activeConversation.contact.avatarBg, color: 'white', overflow: 'hidden' }">
             <img v-if="store.activeConversation.contact.avatar_url" :src="store.activeConversation.contact.avatar_url" alt="avatar" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;" />
             <span v-else>{{ store.activeConversation.contact.avatarInitials }}</span>
@@ -2120,5 +2133,97 @@ onUnmounted(() => {
   margin-top: 0.25rem;
   color: #64748b;
   font-size: 0.8rem;
+}
+
+/* Botão voltar mobile — oculto em desktop */
+.btn-back-mobile {
+  display: none;
+}
+
+/* ===== RESPONSIVO MOBILE ===== */
+@media (max-width: 768px) {
+  .conversations-container {
+    position: relative;
+  }
+
+  /* Lista de conversas: full width no mobile */
+  .conv-list-pane {
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  /* Painel de chat: full width, sobreposto */
+  .chat-pane {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: var(--bg-primary);
+    width: 100%;
+  }
+
+  /* Painel de detalhes: oculto no mobile */
+  .details-pane {
+    display: none !important;
+  }
+
+  /* Controla visibilidade pelo mobileView */
+  .mobile-hidden {
+    display: none !important;
+  }
+
+  /* Botão voltar: visível no mobile */
+  .btn-back-mobile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    font-size: 1.3rem;
+    color: var(--text-main);
+    cursor: pointer;
+    padding: 0.25rem 0.5rem;
+    margin-right: 0.25rem;
+    border-radius: 6px;
+    &:hover { background: var(--bg-hover); }
+  }
+
+  /* Header do chat mais compacto */
+  .chat-header {
+    padding: 0.6rem 0.75rem;
+  }
+
+  /* Mensagens com padding menor */
+  .chat-messages {
+    padding: 0.5rem;
+  }
+
+  /* Input de mensagem compacto */
+  .input-area {
+    padding: 0.5rem;
+  }
+
+  /* Tabs mais compactas */
+  .tabs {
+    gap: 0.5rem;
+    padding: 0 0.5rem;
+  }
+
+  .tab {
+    font-size: 0.78rem;
+    padding: 0.4rem 0.5rem;
+  }
+
+  /* Lista mais compacta */
+  .list-header {
+    padding: 0.75rem;
+  }
+
+  .header-top h2 {
+    font-size: 1rem;
+  }
+
+  .conv-item {
+    padding: 0.75rem;
+  }
 }
 </style>

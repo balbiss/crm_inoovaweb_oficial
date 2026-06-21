@@ -481,4 +481,30 @@ const saveAgent = async () => {
   strong { font-size: 0.88rem; color: var(--text-main); }
   small  { font-size: 0.75rem; color: var(--text-muted); }
 }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+    padding-bottom: 8rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .input-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .bottom-bar {
+    padding: 0.75rem 1rem;
+    .actions { gap: 0.5rem; }
+    .btn-cancel, .btn-primary {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+}
 </style>
