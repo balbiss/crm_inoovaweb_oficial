@@ -350,7 +350,7 @@ export const useConversationsStore = defineStore('conversations', {
         baseURL = window.location.origin.replace(':5173', ':3000')
       }
 
-      const wsURL = baseURL.replace(/^http/, 'ws') + '/cable'
+      const wsURL = baseURL.replace(/^http/, 'ws') + '/cable?token=' + (localStorage.getItem('auth_token') || '')
       const ws = new WebSocket(wsURL)
       this.ws = ws
       this._wsReconnectDelay = this._wsReconnectDelay || 3000
