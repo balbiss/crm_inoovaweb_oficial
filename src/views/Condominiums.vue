@@ -1,8 +1,9 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
-import { Filter, Search, Plus } from '@lucide/vue'
+import { Filter, Search, Plus, Edit2, Trash2 } from '@lucide/vue'
 import api from '../api'
+import Swal from 'sweetalert2'
 import { useCondominiumsStore } from '../store/condominiums'
 import { storeToRefs } from 'pinia'
 
@@ -15,6 +16,20 @@ const filters = ref({
   status: '',
   buildingType: '',
   progress: ''
+})
+
+const filteredCondominiums = computed(() => {
+  return condominiums.value.filter(c => {
+    const search = filters.value.search.toLowerCase()
+    if (search && !c.name?.toLowerCase().includes(search) &&
+        !c.builder?.toLowerCase().includes(search) &&
+        !c.neighborhood?.toLowerCase().includes(search) &&
+        !c.city?.toLowerCase().includes(search)) return false
+    if (filters.value.status && c.status !== filters.value.status) return false
+    if (filters.value.buildingType && c.condominium_types !== filters.value.buildingType) return false
+    if (filters.value.progress && c.construction_progress !== filters.value.progress) return false
+    return true
+  })
 })
 
 const fetchCondominiums = () => {
@@ -32,6 +47,33 @@ const clearFilters = () => {
 const formatDate = (dateString) => {
   if (!dateString) return ''
   return new Date(dateString).toLocaleDateString('pt-BR')
+}
+
+const editCondominium = (id) => {
+  router.push(`/condominios/${id}/editar`)
+}
+
+const deleteCondominium = async (condominium) => {
+  const result = await Swal.fire({
+    title: 'Excluir condomínio?',
+    text: `"${condominium.name}" será removido permanentemente.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#ef4444',
+    cancelButtonColor: '#6b7280',
+    confirmButtonText: 'Sim, excluir',
+    cancelButtonText: 'Cancelar'
+  })
+
+  if (!result.isConfirmed) return
+
+  try {
+    await api.delete(`/condominiums/${condominium.id}`)
+    condominiumsStore.condominiums = condominiums.value.filter(c => c.id !== condominium.id)
+    Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Condomínio excluído.', showConfirmButton: false, timer: 2500 })
+  } catch (error) {
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao excluir.', showConfirmButton: false, timer: 3000 })
+  }
 }
 </script>
 
@@ -106,6 +148,7 @@ const formatDate = (dateString) => {
             <th>CONSTRUTORA</th>
             <th>BAIRRO/CIDADE</th>
             <th>ENTREGA</th>
+            <th>AÇÕES</th>
           </tr>
         </thead>
         <tbody>
@@ -118,14 +161,15 @@ const formatDate = (dateString) => {
               <td><div class="skeleton-line"></div></td>
               <td><div class="skeleton-line"></div></td>
               <td><div class="skeleton-line short"></div></td>
+              <td><div class="skeleton-line short"></div></td>
             </tr>
           </template>
-          <tr v-else-if="condominiums.length === 0">
-            <td colspan="7" class="text-center py-4 text-muted">Nenhum condomínio encontrado.</td>
+          <tr v-else-if="filteredCondominiums.length === 0">
+            <td colspan="8" class="text-center py-4 text-muted">Nenhum condomínio encontrado.</td>
           </tr>
-          <tr v-for="condominium in condominiums" :key="condominium.id">
+          <tr v-for="condominium in filteredCondominiums" :key="condominium.id" class="clickable-row" @click="editCondominium(condominium.id)">
             <td>{{ condominium.status || '-' }}</td>
-            <td>{{ condominium.buildingType ? `${condominium.buildingType}: ${condominium.subType || ''}` : '-' }}</td>
+            <td>{{ condominium.condominium_types || '-' }}</td>
             <td class="font-medium">{{ condominium.name }}</td>
             <td>{{ condominium.developer || '-' }}</td>
             <td>{{ condominium.builder || '-' }}</td>
@@ -136,6 +180,14 @@ const formatDate = (dateString) => {
               <span v-else>-</span>
             </td>
             <td>{{ formatDate(condominium.delivery_date) || '-' }}</td>
+            <td class="actions-cell" @click.stop>
+              <button class="btn-action edit" @click="editCondominium(condominium.id)" title="Editar">
+                <Edit2 class="icon-sm" />
+              </button>
+              <button class="btn-action delete" @click="deleteCondominium(condominium)" title="Excluir">
+                <Trash2 class="icon-sm" />
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -331,6 +383,28 @@ const formatDate = (dateString) => {
 .py-4 { padding-top: 1rem; padding-bottom: 1rem; }
 .text-muted { color: var(--text-muted); }
 .icon-sm { width: 16px; height: 16px; }
+
+.clickable-row {
+  cursor: pointer;
+  &:hover td { background: var(--bg-hover); }
+}
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.btn-action {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.35rem;
+  border-radius: 6px;
+  transition: background 0.15s;
+  color: var(--text-muted);
+
+  &.edit:hover { background: rgba(67, 56, 202, 0.1); color: #4338ca; }
+  &.delete:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+}
 
 /* Skeleton Loader */
 .skeleton-row {
