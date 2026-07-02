@@ -631,10 +631,10 @@ onUnmounted(() => {
             <button :class="['input-tab', { active: !isPrivateMessage }]" @click="isPrivateMessage = false">Responder</button>
             <button :class="['input-tab', { active: isPrivateMessage }]" @click="isPrivateMessage = true">Mensagem Privada</button>
           </div>
-          <button class="btn-magic-sm" @click="generateSummary" :disabled="isGeneratingSummary" style="display: flex; align-items: center; gap: 0.4rem; padding: 0.4rem 0.8rem; background: var(--primary); border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; font-size: 0.85rem; transition: opacity 0.2s; margin-left: auto;">
+          <button class="btn-magic-sm" @click="generateSummary" :disabled="isGeneratingSummary">
             <Loader2 v-if="isGeneratingSummary" class="icon-sm spin" />
             <Sparkles v-else class="icon-sm" />
-            {{ isGeneratingSummary ? 'Resumindo...' : 'Gerar Resumo' }}
+            <span class="btn-magic-label">{{ isGeneratingSummary ? 'Resumindo...' : 'Gerar Resumo' }}</span>
           </button>
         </div>
         <div class="input-box">
@@ -1561,6 +1561,26 @@ onUnmounted(() => {
   background: var(--bg-secondary);
 }
 
+.btn-magic-sm {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.4rem 0.8rem;
+  background: var(--primary);
+  border: none;
+  border-radius: 6px;
+  color: white;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 0.85rem;
+  transition: opacity 0.2s;
+  margin-left: auto;
+  white-space: nowrap;
+
+  &:disabled { opacity: 0.65; cursor: not-allowed; }
+  &:hover:not(:disabled) { opacity: 0.88; }
+}
+
 .input-tabs {
   display: flex;
   gap: 0.5rem;
@@ -2144,6 +2164,8 @@ onUnmounted(() => {
 @media (max-width: 768px) {
   .conversations-container {
     position: relative;
+    overflow: hidden;
+    height: 100%;
   }
 
   /* Lista de conversas: full width no mobile */
@@ -2152,13 +2174,17 @@ onUnmounted(() => {
     flex-shrink: 0;
   }
 
-  /* Painel de chat: full width, sobreposto */
+  /* Painel de chat: flex column ocupando toda a tela */
   .chat-pane {
     position: absolute;
     inset: 0;
     z-index: 10;
     background: var(--bg-primary);
     width: 100%;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
   }
 
   /* Painel de detalhes: oculto no mobile */
@@ -2190,19 +2216,104 @@ onUnmounted(() => {
   /* Header do chat mais compacto */
   .chat-header {
     padding: 0.6rem 0.75rem;
+    flex-shrink: 0;
   }
 
-  /* Mensagens com padding menor */
+  /* Mensagens: cresce e rola, min-height:0 permite shrink no flex */
   .chat-messages {
     padding: 0.5rem;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
   }
 
-  /* Input de mensagem compacto */
-  .input-area {
-    padding: 0.5rem;
+  /* Banner IA pausada: compacto e fixo antes do input */
+  .ai-pause-banner {
+    flex-shrink: 0;
+    padding: 0.4rem 0.75rem;
+    font-size: 0.78rem;
+    gap: 0.4rem;
   }
 
-  /* Tabs mais compactas */
+  /* Área de input: cola no fundo, nunca sai da tela */
+  .chat-input-area {
+    flex-shrink: 0;
+    padding: 0.5rem 0.6rem;
+    padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  }
+
+  /* Tabs de input mais compactas */
+  .input-tabs {
+    padding-left: 0;
+    gap: 0.35rem;
+    margin-bottom: 0.3rem;
+    flex-wrap: nowrap;
+
+    .input-tab {
+      font-size: 0.78rem;
+      padding: 0.35rem 0.6rem;
+    }
+
+    /* Botão Gerar Resumo: só ícone no mobile */
+    .btn-magic-sm {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      padding: 0.35rem 0.6rem;
+      background: var(--primary);
+      border: none;
+      border-radius: 6px;
+      color: white;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.8rem;
+      margin-left: auto;
+      flex-shrink: 0;
+
+      .btn-magic-label { display: none; }
+    }
+  }
+
+  /* Textarea menor no mobile */
+  .input-box {
+    textarea {
+      min-height: 52px;
+      max-height: 120px;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.875rem;
+    }
+
+    .input-actions {
+      padding: 0.35rem 0.6rem;
+
+      .btn-send {
+        padding: 0.45rem 0.9rem;
+        font-size: 0.82rem;
+        white-space: nowrap;
+      }
+
+      .left-actions {
+        gap: 0.25rem;
+      }
+
+      /* Pill IA pausada: compacto no mobile */
+      .ai-paused-pill {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+        gap: 0.25rem;
+        max-width: 130px;
+
+        span {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+      }
+    }
+  }
+
+  /* Tabs de status mais compactas */
   .tabs {
     gap: 0.5rem;
     padding: 0 0.5rem;
