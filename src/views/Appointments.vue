@@ -160,6 +160,7 @@ const formatTime = (datetime) => {
             <td>{{ app.broker_name || '-' }}</td>
             <td>
               <a v-if="app.property" href="#" class="property-link">{{ app.property.title || `Imóvel #${app.property.id}` }}</a>
+              <a v-else-if="app.condominium" href="#" class="property-link">{{ app.condominium.name || `Condomínio #${app.condominium.id}` }}</a>
               <span v-else>-</span>
             </td>
             <td class="actions-cell">
