@@ -1,12 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
 import { brand } from '../config/brand'
 import { Eye, EyeOff } from 'lucide-vue-next'
-
-const router = useRouter()
 
 const words = brand.name.split(' ')
 const brandMain = words.slice(0, -1).join(' ')
@@ -61,9 +58,9 @@ const handleLogin = async () => {
     })
 
     if (response.data && response.data.user && response.data.user.role === 'admin') {
-      router.push('/admin')
+      window.location.href = '/admin'
     } else {
-      router.push('/dashboard')
+      window.location.href = '/dashboard'
     }
   } catch (error) {
     console.error("Login error", error)

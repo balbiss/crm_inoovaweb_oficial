@@ -1,14 +1,12 @@
 <script setup>
-import { useRouter } from 'vue-router'
 import { ref, onMounted } from 'vue'
 
-const router = useRouter()
 const isSidebarOpen = ref(true)
 
 const logout = () => {
   localStorage.removeItem('auth_token')
   localStorage.removeItem('user')
-  router.push('/login')
+  window.location.href = '/login'
 }
 </script>
 

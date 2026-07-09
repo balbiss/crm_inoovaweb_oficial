@@ -388,7 +388,7 @@ onUnmounted(() => {
 const handleLogout = () => {
   localStorage.removeItem('auth_token')
   localStorage.removeItem('user')
-  router.push('/login')
+  window.location.href = '/login'
 }
 </script>
 
