@@ -152,7 +152,7 @@ const loadUser = () => {
 }
 
 const isAdminOrEmpresa = computed(() => {
-  return ['admin', 'empresa'].includes(currentUser.value.role)
+  return ['admin', 'empresa'].includes(currentUser.value.role) || !!currentUser.value.permissions?.admin
 })
 
 const userInitials = () => {

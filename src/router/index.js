@@ -248,8 +248,8 @@ router.beforeEach((to, _from, next) => {
     return next({ name: 'dashboard' })
   }
 
-  // Rotas com requiresOwner: apenas empresa ou admin
-  if (to.meta?.requiresOwner && user && !OWNER_ROLES.includes(user.role)) {
+  // Rotas com requiresOwner: empresa, admin, ou agente com permissao administrativa total
+  if (to.meta?.requiresOwner && user && !OWNER_ROLES.includes(user.role) && !user.permissions?.admin) {
     return next({ name: 'dashboard' })
   }
 
