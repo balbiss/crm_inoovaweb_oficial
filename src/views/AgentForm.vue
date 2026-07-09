@@ -286,7 +286,6 @@ const saveAgent = async () => {
 <style lang="scss" scoped>
 .page-container {
   padding: 2rem;
-  padding-bottom: 8rem;
   background: var(--bg-primary);
   min-height: 100%;
 }
@@ -418,7 +417,8 @@ const saveAgent = async () => {
 .text-danger-hover:hover strong { color: #ef4444; }
 
 .bottom-bar {
-  position: fixed; bottom: 0; left: 0; right: 0;
+  position: sticky; bottom: 0;
+  margin: 2rem -2rem -2rem;
   background: var(--bg-secondary);
   border-top: 1px solid var(--border-color);
   padding: 1rem 2rem;
@@ -485,7 +485,6 @@ const saveAgent = async () => {
 @media (max-width: 768px) {
   .page-container {
     padding: 1rem;
-    padding-bottom: 8rem;
   }
 
   .form-grid {
@@ -499,6 +498,7 @@ const saveAgent = async () => {
   }
 
   .bottom-bar {
+    margin: 1.5rem -1rem -1rem;
     padding: 0.75rem 1rem;
     .actions { gap: 0.5rem; }
     .btn-cancel, .btn-primary {
