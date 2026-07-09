@@ -46,7 +46,7 @@ export const useConversationsStore = defineStore('conversations', {
       if (state.sidebarFilter === 'mencoes') {
         filtered = filtered.filter(() => false) // Mock
       } else if (state.sidebarFilter === 'participantes') {
-        filtered = filtered.filter(c => c.assignee !== state.currentUser.name) // Mock
+        filtered = filtered.filter(c => c.assignee_id !== state.currentUser.id)
       } else if (state.sidebarFilter === 'nao-atendidas') {
         filtered = filtered.filter(c => c.status === 'open' && c.unread > 0)
       }
@@ -62,7 +62,7 @@ export const useConversationsStore = defineStore('conversations', {
       let filtered = this.sidebarFilteredConversations
       
       if (state.currentFilter === 'minhas') {
-        filtered = filtered.filter(c => c.assignee === state.currentUser.name)
+        filtered = filtered.filter(c => c.assignee_id === state.currentUser.id)
       } else if (state.currentFilter === 'nao-atribuidos') {
         filtered = filtered.filter(c => !c.assignee)
       }
@@ -350,7 +350,8 @@ export const useConversationsStore = defineStore('conversations', {
         baseURL = window.location.origin.replace(':5173', ':3000')
       }
 
-      const wsURL = baseURL.replace(/^http/, 'ws') + '/cable?token=' + (localStorage.getItem('auth_token') || '')
+      const rawToken = (localStorage.getItem('auth_token') || '').replace(/^Bearer\s+/i, '')
+      const wsURL = baseURL.replace(/^http/, 'ws') + '/cable?token=' + rawToken
       const ws = new WebSocket(wsURL)
       this.ws = ws
       this._wsReconnectDelay = this._wsReconnectDelay || 3000
@@ -400,7 +401,11 @@ export const useConversationsStore = defineStore('conversations', {
             if (conv) conv.tags = payload.tags
           } else if (payload.event === 'conversation_updated') {
             const idx = this.conversations.findIndex(c => Number(c.id) === Number(payload.conversation?.id))
-            if (idx !== -1) Object.assign(this.conversations[idx], payload.conversation)
+            if (idx !== -1) {
+              Object.assign(this.conversations[idx], payload.conversation)
+            } else {
+              this.fetchConversations()
+            }
           } else if (payload.event === 'property_match_found') {
             window.dispatchEvent(new CustomEvent('property-match-found', { detail: payload }))
           } else if (payload.event === 'snooze_expired') {

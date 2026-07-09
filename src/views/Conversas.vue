@@ -480,7 +480,7 @@ onUnmounted(() => {
             :class="['tab', { active: store.currentFilter === 'minhas' }]"
             @click="store.setFilter('minhas')"
           >
-            Minhas <span class="count">{{ store.sidebarFilteredConversations.filter(c => c.assignee === store.currentUser.name).length }}</span>
+            Minhas <span class="count">{{ store.sidebarFilteredConversations.filter(c => c.assignee_id === store.currentUser.id).length }}</span>
           </button>
           <button 
             :class="['tab', { active: store.currentFilter === 'nao-atribuidos' }]"
