@@ -345,6 +345,14 @@ export const useConversationsStore = defineStore('conversations', {
     setupWebSocket() {
       if (this.ws) return
 
+      if (!this._wsHealthCheckInterval) {
+        this._wsHealthCheckInterval = setInterval(() => {
+          if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            this.fetchConversations()
+          }
+        }, 12000)
+      }
+
       let baseURL = api.defaults.baseURL
       if (!baseURL) {
         baseURL = window.location.origin.replace(':5173', ':3000')
@@ -354,10 +362,10 @@ export const useConversationsStore = defineStore('conversations', {
       const wsURL = baseURL.replace(/^http/, 'ws') + '/cable?token=' + rawToken
       const ws = new WebSocket(wsURL)
       this.ws = ws
-      this._wsReconnectDelay = this._wsReconnectDelay || 3000
+      this._wsReconnectDelay = this._wsReconnectDelay || 1500
 
       ws.onopen = () => {
-        this._wsReconnectDelay = 3000
+        this._wsReconnectDelay = 1500
         ws.send(JSON.stringify({
           command: 'subscribe',
           identifier: JSON.stringify({ channel: 'ConversationsChannel' })
@@ -428,7 +436,7 @@ export const useConversationsStore = defineStore('conversations', {
 
       ws.onclose = () => {
         this.ws = null
-        const delay = Math.min(this._wsReconnectDelay || 3000, 30000)
+        const delay = Math.min(this._wsReconnectDelay || 1500, 8000)
         this._wsReconnectDelay = delay * 2
         setTimeout(() => this.fetchConversations(), delay)
       }

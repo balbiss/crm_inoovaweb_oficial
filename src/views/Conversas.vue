@@ -1721,6 +1721,8 @@ onUnmounted(() => {
 
 .input-tabs {
   display: flex;
+  flex-wrap: wrap;
+  row-gap: 0.4rem;
   gap: 0.5rem;
   margin-bottom: -1px;
   padding-left: 1rem;
