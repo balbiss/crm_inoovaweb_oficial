@@ -2356,7 +2356,7 @@ onUnmounted(() => {
     -webkit-overflow-scrolling: touch;
   }
 
-  .btn-details-mobile {
+  .chat-header .btn-details-mobile {
     display: flex;
   }
 

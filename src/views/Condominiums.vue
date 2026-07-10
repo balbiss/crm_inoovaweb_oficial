@@ -268,11 +268,14 @@ const deleteCondominium = async (condominium) => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    flex-wrap: wrap;
+    row-gap: 0.75rem;
 
     .left-actions {
       display: flex;
       align-items: center;
       gap: 1rem;
+      flex-wrap: wrap;
 
       .btn-advanced-filter {
         display: flex;
@@ -462,6 +465,17 @@ const deleteCondominium = async (condominium) => {
 
   .filter-bar .filter-inputs {
     grid-template-columns: 1fr;
+  }
+
+  .filter-bar .filter-actions {
+    .right-actions {
+      width: 100%;
+      button {
+        flex: 1;
+        padding: 0.6rem 1rem;
+        justify-content: center;
+      }
+    }
   }
 }
 </style>

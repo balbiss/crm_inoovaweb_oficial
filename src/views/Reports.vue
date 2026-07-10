@@ -679,6 +679,8 @@ const donutOptions = {
   display: flex; gap: 0.25rem; margin-bottom: 1.5rem;
   border-bottom: 2px solid var(--border-color, #e2e8f0);
   padding-bottom: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .tab {
@@ -688,6 +690,8 @@ const donutOptions = {
   margin-bottom: -2px; cursor: pointer;
   font-size: 0.88rem; font-weight: 500; color: var(--text-muted, #64748b);
   transition: all 0.15s;
+  flex-shrink: 0;
+  white-space: nowrap;
   .ic { width: 15px; height: 15px; }
   &:hover { color: #6366f1; }
   &.active { color: #6366f1; border-bottom-color: #6366f1; font-weight: 600; }
@@ -870,6 +874,21 @@ const donutOptions = {
   .kpi-row    { grid-template-columns: repeat(2, 1fr); }
   .chart-row  { grid-template-columns: 1fr; }
   .tags-layout { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .reports-page {
+    padding: 1rem;
+  }
+
+  .page-header {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .kpi-row {
+    grid-template-columns: 1fr;
+  }
 }
 
 /* Performance tab */

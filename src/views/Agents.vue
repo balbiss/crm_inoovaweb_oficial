@@ -657,4 +657,30 @@ const toggleRoundRobin = async (agent) => {
 .py-4 { padding: 1.5rem 0; }
 .text-xs { font-size: 0.75rem; }
 .text-muted { color: var(--text-muted); }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .page-header .header-content {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+
+  .page-header .header-actions {
+    width: 100%;
+    flex-wrap: wrap;
+
+    button {
+      flex: 1;
+      justify-content: center;
+    }
+  }
+
+  .groups-card .group-add-row {
+    flex-direction: column;
+  }
+}
 </style>
