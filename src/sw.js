@@ -4,6 +4,14 @@ import { precacheAndRoute, cleanupOutdatedCaches } from 'workbox-precaching'
 precacheAndRoute(self.__WB_MANIFEST || [])
 cleanupOutdatedCaches()
 
+// Sem isso, um app instalado (PWA) pode ficar preso numa versao antiga
+// indefinidamente - o novo SW so assumiria depois que TODAS as abas/instancias
+// fossem fechadas manualmente, o que na pratica quase nunca acontece.
+self.skipWaiting()
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
 // SPA fallback
 self.addEventListener('fetch', (event) => {
   if (
