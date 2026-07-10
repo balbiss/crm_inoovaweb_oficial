@@ -824,7 +824,9 @@ onUnmounted(() => {
               placeholder="Nova etiqueta..."
               class="tag-input"
             />
-            <button class="btn-text-blue" @click="addTag" :disabled="!newTagName.trim()">Adicionar</button>
+            <button class="btn-add-tag" @click="addTag" :disabled="!newTagName.trim()">
+              <Plus class="icon-xs" /> Adicionar
+            </button>
           </div>
         </div>
       </div>
@@ -1145,37 +1147,43 @@ onUnmounted(() => {
   .tag-chips {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-    margin-bottom: 0.75rem;
+    gap: 8px;
+    margin-bottom: 0.9rem;
+
+    &:empty { display: none; }
   }
 
   .tag-chip {
     display: inline-flex;
     align-items: center;
-    gap: 5px;
+    gap: 7px;
     font-size: 0.75rem;
     font-weight: 700;
-    padding: 3px 6px 3px 10px;
-    border-radius: 10px;
+    padding: 5px 6px 5px 12px;
+    border-radius: 999px;
     color: #fff;
     text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+    line-height: 1.3;
   }
 
   .tag-remove {
-    background: rgba(0,0,0,0.15);
+    background: rgba(255,255,255,0.22);
     border: none;
     color: #fff;
     border-radius: 50%;
-    width: 16px;
-    height: 16px;
+    width: 18px;
+    height: 18px;
     line-height: 1;
     cursor: pointer;
-    font-size: 0.85rem;
+    font-size: 0.9rem;
     display: flex;
     align-items: center;
     justify-content: center;
     padding: 0;
-    &:hover { background: rgba(0,0,0,0.3); }
+    flex-shrink: 0;
+    transition: background 0.15s;
+    &:hover { background: rgba(255,255,255,0.4); }
   }
 
   .tag-add-row {
@@ -1185,13 +1193,37 @@ onUnmounted(() => {
 
   .tag-input {
     flex: 1;
-    padding: 0.4rem 0.6rem;
+    min-width: 0;
+    padding: 0.5rem 0.7rem;
     border: 1px solid var(--border-color);
     border-radius: 6px;
     background: var(--bg-primary);
     color: var(--text-main);
     font-size: 0.85rem;
     &:focus { outline: none; border-color: var(--primary); }
+  }
+
+  .btn-add-tag {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #4338ca;
+    background: rgba(67,56,202,0.07);
+    border: 1px solid rgba(67,56,202,0.2);
+    border-radius: 6px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 0.15s;
+
+    &:hover:not(:disabled) { background: rgba(67,56,202,0.14); }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .icon-xs { width: 14px; height: 14px; }
   }
 
   .conv-preview {
