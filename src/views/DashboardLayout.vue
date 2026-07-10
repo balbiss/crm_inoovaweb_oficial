@@ -169,10 +169,22 @@ const userDisplayName = () => {
 
 import { brand } from '../config/brand'
 import { usePushNotifications } from '../composables/usePushNotifications'
+import { useInstallPrompt } from '../composables/useInstallPrompt'
 
 const { subscribe: subscribePush } = usePushNotifications()
+const { canInstall, isInstalled, isStandalone: isAppStandalone, promptInstall } = useInstallPrompt()
 
 const showIosInstallBanner = ref(false)
+const androidInstallDismissed = ref(localStorage.getItem('android_install_banner_dismissed') === 'true')
+
+const showAndroidInstallBanner = computed(() =>
+  canInstall.value && !isInstalled.value && !isAppStandalone && !androidInstallDismissed.value
+)
+
+const dismissAndroidBanner = () => {
+  androidInstallDismissed.value = true
+  localStorage.setItem('android_install_banner_dismissed', 'true')
+}
 
 const checkIosInstallBanner = () => {
   const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
@@ -625,6 +637,14 @@ const handleLogout = () => {
       <div v-if="showIosInstallBanner" class="ios-install-banner">
         <span>📲 Adicione o VisitaIA à Tela de Início pra receber notificações e usar em tela cheia.</span>
         <button class="ios-install-banner-close" @click="dismissIosBanner">
+          <X class="icon-sm" />
+        </button>
+      </div>
+
+      <div v-if="showAndroidInstallBanner" class="ios-install-banner">
+        <span>📲 Instale o VisitaIA no seu celular pra acesso rápido e notificações.</span>
+        <button class="install-cta-btn" @click="promptInstall">Instalar</button>
+        <button class="ios-install-banner-close" @click="dismissAndroidBanner">
           <X class="icon-sm" />
         </button>
       </div>
@@ -1137,6 +1157,19 @@ const handleLogout = () => {
   line-height: 1.35;
 
   span { flex: 1; }
+
+  .install-cta-btn {
+    flex-shrink: 0;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    &:hover { opacity: 0.9; }
+  }
 
   .ios-install-banner-close {
     flex-shrink: 0;

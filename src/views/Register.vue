@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router'
 import axios from 'axios'
 import Swal from 'sweetalert2'
 import { brand } from '../config/brand'
-import { Eye, EyeOff, Building2, User, Lock } from 'lucide-vue-next'
+import { Eye, EyeOff, Building2, User, Lock, Download, Share } from 'lucide-vue-next'
+import { useInstallPrompt } from '../composables/useInstallPrompt'
 
 const router = useRouter()
+const { canInstall, isInstalled, isIOS, isStandalone, promptInstall } = useInstallPrompt()
 
 const words = brand.name.split(' ')
 const brandMain   = words.slice(0, -1).join(' ')
@@ -177,6 +179,17 @@ const handleRegister = async () => {
 
         <div class="auth-footer">
           <p>Já tem uma conta? <router-link to="/login">Fazer login</router-link></p>
+        </div>
+
+        <div v-if="!isInstalled && !isStandalone && canInstall" class="install-banner">
+          <button class="install-btn" type="button" @click="promptInstall">
+            <Download :size="16" /> Instalar aplicativo
+          </button>
+        </div>
+
+        <div v-else-if="!isInstalled && !isStandalone && isIOS" class="install-banner ios-hint">
+          <Share :size="14" />
+          <span>Toque em <strong>Compartilhar</strong> e depois em <strong>"Adicionar à Tela de Início"</strong> pra instalar o app.</span>
         </div>
       </div>
     </div>
@@ -397,5 +410,44 @@ const handleRegister = async () => {
     text-decoration: none;
     &:hover { text-decoration: underline; }
   }
+}
+
+.install-banner {
+  margin-top: 1.25rem;
+}
+
+.install-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  width: 100%;
+  background: transparent;
+  color: #4338ca;
+  border: 1px solid #4338ca;
+  border-radius: 8px;
+  padding: 0.7rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+
+  &:hover { background: rgba(67,56,202,0.06); }
+}
+
+.ios-hint {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: rgba(67,56,202,0.05);
+  border: 1px solid rgba(67,56,202,0.15);
+  border-radius: 8px;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.8rem;
+  color: var(--text-muted, #6b7280);
+  line-height: 1.4;
+
+  svg { flex-shrink: 0; margin-top: 0.15rem; color: #4338ca; }
+  strong { color: var(--text-main, #111827); }
 }
 </style>
