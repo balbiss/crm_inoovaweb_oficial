@@ -581,6 +581,9 @@ onUnmounted(() => {
           </div>
         </div>
         <div class="chat-actions">
+          <button class="btn-details-mobile" @click="mobileView = 'details'" title="Detalhes do contato">
+            <Info class="icon-sm" />
+          </button>
           <ConversationStatusDropdown
             :conversation-id="store.activeConversation.id"
             :current-status="store.activeConversation.status"
@@ -703,10 +706,10 @@ onUnmounted(() => {
     </div>
 
     <!-- Right Sidebar Pane (Contact Details) -->
-    <div class="details-pane" v-if="store.activeConversation">
+    <div class="details-pane" :class="{ 'mobile-hidden': mobileView !== 'details' }" v-if="store.activeConversation">
       <div class="details-header-top">
         <h3>Contatos</h3>
-        <button class="icon-btn"><X class="icon-sm" /></button>
+        <button class="icon-btn" @click="mobileView = 'chat'"><X class="icon-sm" /></button>
       </div>
 
       <div class="contact-profile">
@@ -1339,6 +1342,20 @@ onUnmounted(() => {
     display: flex;
     align-items: center;
     gap: 0.5rem;
+  }
+
+  .btn-details-mobile {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    color: var(--text-muted);
+    cursor: pointer;
+    &:hover { background: var(--bg-hover); color: var(--text-main); }
   }
 
   .btn-resolve {
@@ -2327,9 +2344,20 @@ onUnmounted(() => {
     overflow: hidden;
   }
 
-  /* Painel de detalhes: oculto no mobile */
+  /* Painel de detalhes: vira tela cheia no mobile, controlado pelo mobileView */
   .details-pane {
-    display: none !important;
+    position: absolute;
+    inset: 0;
+    z-index: 11;
+    background: var(--bg-primary);
+    width: 100%;
+    height: 100%;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .btn-details-mobile {
+    display: flex;
   }
 
   /* Controla visibilidade pelo mobileView */
