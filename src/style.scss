@@ -106,6 +106,12 @@ body.dark-theme {
   }
 }
 
+/* Wrapper reutilizavel pra tabelas nao estourarem a tela no mobile */
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* Custom Scrollbar for Light Theme */
 body:not(.dark-theme) {
   ::-webkit-scrollbar {

@@ -172,6 +172,20 @@ import { usePushNotifications } from '../composables/usePushNotifications'
 
 const { subscribe: subscribePush } = usePushNotifications()
 
+const showIosInstallBanner = ref(false)
+
+const checkIosInstallBanner = () => {
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
+  const isStandalone = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches
+  const dismissed = localStorage.getItem('ios_install_banner_dismissed') === 'true'
+  showIosInstallBanner.value = isIOS && !isStandalone && !dismissed
+}
+
+const dismissIosBanner = () => {
+  showIosInstallBanner.value = false
+  localStorage.setItem('ios_install_banner_dismissed', 'true')
+}
+
 const accountName = () => {
   return currentUser.value.account_name || brand.name
 }
@@ -260,6 +274,7 @@ const handleVisibilityChange = () => {
 
 onMounted(() => {
   loadUser()
+  checkIosInstallBanner()
 
   // Push notifications — pede permissão após login (silencioso se negado)
   subscribePush()
@@ -606,6 +621,12 @@ const handleLogout = () => {
           <Menu v-else class="icon" />
         </button>
         <span class="mobile-brand">{{ accountName() }}</span>
+      </div>
+      <div v-if="showIosInstallBanner" class="ios-install-banner">
+        <span>📲 Adicione o VisitaIA à Tela de Início pra receber notificações e usar em tela cheia.</span>
+        <button class="ios-install-banner-close" @click="dismissIosBanner">
+          <X class="icon-sm" />
+        </button>
       </div>
       <router-view @click="closeMobileSidebar"></router-view>
     </main>
@@ -1102,6 +1123,31 @@ const handleLogout = () => {
 
 .mobile-overlay {
   display: none;
+}
+
+.ios-install-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: var(--input-focus);
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-main);
+  font-size: 0.82rem;
+  line-height: 1.35;
+
+  span { flex: 1; }
+
+  .ios-install-banner-close {
+    flex-shrink: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    padding: 0.2rem;
+    &:hover { color: var(--text-main); }
+  }
 }
 
 @media (max-width: 768px) {

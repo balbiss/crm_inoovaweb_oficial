@@ -765,4 +765,22 @@ const submitForm = async () => {
     font-weight: bold;
   }
 }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .grid-form {
+    grid-template-columns: 1fr;
+
+    .col-2 {
+      grid-column: span 1;
+    }
+  }
+
+  .checkbox-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 </style>

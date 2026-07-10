@@ -385,4 +385,42 @@ const submitForm = async () => {
 }
 
 .text-muted { color: var(--text-muted); }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+    align-items: flex-start;
+  }
+
+  .split-layout {
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .property-preview {
+    flex: 1 1 auto;
+  }
+
+  .form-panel {
+    padding: 1.25rem;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    margin-bottom: 2rem;
+
+    .full-width {
+      grid-column: span 1;
+    }
+  }
+
+  .form-actions {
+    flex-wrap: wrap;
+
+    button {
+      flex: 1 1 calc(50% - 0.5rem);
+    }
+  }
+}
 </style>

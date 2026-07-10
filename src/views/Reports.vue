@@ -332,6 +332,7 @@ const donutOptions = {
 
       <div class="table-panel">
         <div class="chart-head">Desempenho Detalhado por Corretor</div>
+        <div class="table-scroll-wrapper">
         <table class="report-table">
           <thead>
             <tr>
@@ -365,6 +366,7 @@ const donutOptions = {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </template>
 
@@ -397,6 +399,7 @@ const donutOptions = {
               </button>
             </div>
           </div>
+          <div class="table-scroll-wrapper">
           <table class="report-table">
             <thead>
               <tr>
@@ -420,6 +423,7 @@ const donutOptions = {
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </div>
     </template>
@@ -449,6 +453,7 @@ const donutOptions = {
       <!-- Por corretor (só owner) -->
       <div class="table-panel" v-if="isOwner && appointmentsReport.by_agent?.length" style="margin-bottom:1rem">
         <div class="chart-head">Agendamentos por Corretor</div>
+        <div class="table-scroll-wrapper">
         <table class="report-table">
           <thead>
             <tr>
@@ -471,6 +476,7 @@ const donutOptions = {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
 
       <!-- Lista completa -->
@@ -479,6 +485,7 @@ const donutOptions = {
           Lista de Agendamentos
           <button class="btn-export" @click="exportAppointments"><Download class="ic" /> Exportar CSV</button>
         </div>
+        <div class="table-scroll-wrapper">
         <table class="report-table">
           <thead>
             <tr>
@@ -506,6 +513,7 @@ const donutOptions = {
             </tr>
           </tbody>
         </table>
+        </div>
       </div>
     </template>
 
@@ -769,8 +777,14 @@ const donutOptions = {
   border-radius: 12px; overflow: hidden; box-shadow: 0 1px 4px rgba(0,0,0,0.04);
 }
 
+.table-wrap,
+.table-scroll-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 .report-table {
-  width: 100%; border-collapse: collapse;
+  width: 100%; min-width: 640px; border-collapse: collapse;
   th, td { padding: 0.8rem 1rem; text-align: left; border-bottom: 1px solid var(--border-color, #f1f5f9); font-size: 0.85rem; }
   th { font-weight: 600; color: var(--text-main); background: var(--bg-primary, #fafafa); font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em; }
   td { color: var(--text-muted); }

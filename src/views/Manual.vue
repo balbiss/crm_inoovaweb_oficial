@@ -811,6 +811,8 @@ nav {
 .manual-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
 }
 
@@ -974,5 +976,23 @@ table {
   color: var(--text-muted);
   p { margin: 0; }
   strong { color: var(--text-main); }
+}
+
+@media (max-width: 768px) {
+  .manual-page {
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .manual-nav {
+    width: 100%;
+    max-height: 200px;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .content-inner {
+    padding: 1.25rem 1rem 3rem;
+  }
 }
 </style>

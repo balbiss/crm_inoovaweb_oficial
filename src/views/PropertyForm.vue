@@ -734,4 +734,26 @@ const submitForm = async () => {
     gap: 0.25rem;
   }
 }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .form-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+
+    .full-width {
+      grid-column: 1;
+    }
+  }
+
+  .form-section {
+    padding: 1rem;
+  }
+}
 </style>

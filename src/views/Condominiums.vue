@@ -344,12 +344,14 @@ const deleteCondominium = async (condominium) => {
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 
 .data-table {
   width: 100%;
+  min-width: 640px;
   border-collapse: collapse;
 
   th {
@@ -450,6 +452,16 @@ const deleteCondominium = async (condominium) => {
   .icon-lg {
     width: 24px;
     height: 24px;
+  }
+}
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  .filter-bar .filter-inputs {
+    grid-template-columns: 1fr;
   }
 }
 </style>

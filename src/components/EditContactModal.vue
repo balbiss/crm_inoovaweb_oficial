@@ -711,4 +711,19 @@ const save = async () => {
   opacity: 0.7;
   cursor: not-allowed;
 }
+
+@media (max-width: 600px) {
+  .modal-header, .modal-body, .modal-footer {
+    padding: 16px;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .form-row .form-group {
+    margin-bottom: 0;
+  }
+}
 </style>

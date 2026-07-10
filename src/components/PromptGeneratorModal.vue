@@ -376,4 +376,18 @@ const closeModal = () => {
   margin-top: 0.15rem;
   font-style: italic;
 }
+
+@media (max-width: 600px) {
+  .modal-overlay {
+    padding: 0.75rem;
+  }
+
+  .modal-header, .modal-body, .modal-footer {
+    padding: 1rem;
+  }
+
+  .form-row-split {
+    grid-template-columns: 1fr;
+  }
+}
 </style>
