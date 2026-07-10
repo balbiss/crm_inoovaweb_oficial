@@ -82,14 +82,22 @@ const handleContactUpdated = () => {
   fetchContacts(false) // Atualiza em background sem mostrar tela de carregamento
 }
 
+const closeMoveMenuOnOutsideClick = (event) => {
+  if (!event.target.closest('.move-menu-wrapper')) {
+    openMoveMenuCardId.value = null
+  }
+}
+
 onMounted(() => {
   store.setupWebSocket() // Garante que o websocket está conectado
   fetchContacts()
   window.addEventListener('contact-updated', handleContactUpdated)
+  document.addEventListener('click', closeMoveMenuOnOutsideClick)
 })
 
 onUnmounted(() => {
   window.removeEventListener('contact-updated', handleContactUpdated)
+  document.removeEventListener('click', closeMoveMenuOnOutsideClick)
 })
 
 // Drag and Drop Logic
@@ -101,19 +109,14 @@ const dragCard = (event, card) => {
   event.dataTransfer.effectAllowed = 'move'
 }
 
-const dropCard = async (event, columnId) => {
-  activeColumnDrag.value = null
-  if (!draggedCard.value) return
-  
-  const card = draggedCard.value
+const moveCardToStage = async (card, columnId) => {
   const oldStatus = card.raw.status || 'lead'
-  
   if (oldStatus === columnId) return
 
   // Optimistic update
   const sourceCol = columns.value.find(c => c.id === oldStatus)
   const targetCol = columns.value.find(c => c.id === columnId)
-  
+
   if (sourceCol && targetCol) {
     sourceCol.cards = sourceCol.cards.filter(c => c.id !== card.id)
     card.raw.status = columnId
@@ -135,6 +138,28 @@ const dropCard = async (event, columnId) => {
       confirmButtonColor: '#1f93ff'
     })
     fetchContacts()
+  }
+}
+
+// Menu "Mover para..." — fallback pra touch, onde o drag-and-drop nativo nao funciona
+const openMoveMenuCardId = ref(null)
+
+const toggleMoveMenu = (cardId) => {
+  openMoveMenuCardId.value = openMoveMenuCardId.value === cardId ? null : cardId
+}
+
+const moveCardViaMenu = async (card, columnId) => {
+  openMoveMenuCardId.value = null
+  await moveCardToStage(card, columnId)
+}
+
+const dropCard = async (event, columnId) => {
+  activeColumnDrag.value = null
+  if (!draggedCard.value) return
+
+  const card = draggedCard.value
+  try {
+    await moveCardToStage(card, columnId)
   } finally {
     draggedCard.value = null
   }
@@ -245,10 +270,23 @@ const handleCreateContact = async () => {
           >
             <div class="card-header">
               <h4>{{ card.title }}</h4>
-              <button class="icon-btn-sm" @click.stop><MoreHorizontal class="icon-sm" /></button>
+              <div class="move-menu-wrapper">
+                <button class="icon-btn-sm" @click.stop="toggleMoveMenu(card.id)"><MoreHorizontal class="icon-sm" /></button>
+                <div v-if="openMoveMenuCardId === card.id" class="move-menu" @click.stop>
+                  <div class="move-menu-title">Mover para...</div>
+                  <button
+                    v-for="target in columns.filter(c => c.id !== col.id)"
+                    :key="target.id"
+                    class="move-menu-item"
+                    @click="moveCardViaMenu(card, target.id)"
+                  >
+                    {{ target.name }}
+                  </button>
+                </div>
+              </div>
             </div>
             <p class="card-subtitle">{{ card.subtitle }}</p>
-            
+
             <div class="card-details">
               <span class="phone-info"><Phone class="icon-xs" /> {{ card.phone }}</span>
               <span class="temp-badge" :class="card.temperature.toLowerCase()">{{ card.temperature }}</span>
@@ -549,8 +587,49 @@ const handleCreateContact = async () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  
+
   &:hover { color: var(--text-main); }
+}
+
+.move-menu-wrapper {
+  position: relative;
+}
+
+.move-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  background: white;
+  border: 1px solid rgba(0,0,0,0.08);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  min-width: 180px;
+  max-width: calc(100vw - 3rem);
+  z-index: 50;
+  padding: 0.35rem 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.move-menu-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #9ca3af;
+  padding: 0.3rem 0.9rem 0.4rem;
+}
+
+.move-menu-item {
+  background: none;
+  border: none;
+  text-align: left;
+  padding: 0.5rem 0.9rem;
+  font-size: 0.82rem;
+  color: #1f2937;
+  cursor: pointer;
+
+  &:hover { background: rgba(0,0,0,0.04); }
 }
 
 .loading-state {
