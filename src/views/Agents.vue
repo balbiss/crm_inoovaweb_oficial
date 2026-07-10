@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Plus, Edit2, Trash2, Lock, Unlock, ShieldAlert, RefreshCw } from 'lucide-vue-next'
+import { Plus, Edit2, Trash2, Lock, Unlock, ShieldAlert, RefreshCw, X, Check } from 'lucide-vue-next'
 
 const DEPT_CONFIG = {
   corretor:    { label: 'Corretor',    color: '#4338ca', bg: 'rgba(67,56,202,0.1)' },
@@ -19,19 +19,105 @@ const { agents, isLoading } = storeToRefs(agentsStore)
 const currentUser = ref(null)
 const togglingId = ref(null)
 
+const groups = ref([])
+const groupsLoading = ref(false)
+const newGroupName = ref('')
+const editingGroupId = ref(null)
+const editingGroupName = ref('')
+const showGroupManager = ref(false)
+
 const fetchAgents = () => agentsStore.fetchAgents()
+
+const fetchGroups = async () => {
+  groupsLoading.value = true
+  try {
+    const res = await api.get('/round_robin_groups')
+    groups.value = res.data
+  } catch (e) {
+    console.error('Erro ao carregar grupos de rodízio', e)
+  } finally {
+    groupsLoading.value = false
+  }
+}
 
 onMounted(() => {
   const stored = localStorage.getItem('user')
   if (stored) currentUser.value = JSON.parse(stored)
   fetchAgents()
+  fetchGroups()
 })
 
-const queueAgents = computed(() =>
-  [...agents.value]
-    .filter(a => a.available_for_roundrobin && a.status === 'active' && a.department === 'corretor')
-    .sort((a, b) => (a.queue_position ?? 9999) - (b.queue_position ?? 9999))
-)
+const createGroup = async () => {
+  const name = newGroupName.value.trim()
+  if (!name) return
+  try {
+    const res = await api.post('/round_robin_groups', { round_robin_group: { name } })
+    groups.value.push(res.data)
+    newGroupName.value = ''
+  } catch (e) {
+    console.error('Erro ao criar grupo', e)
+  }
+}
+
+const startEditGroup = (group) => {
+  editingGroupId.value = group.id
+  editingGroupName.value = group.name
+}
+
+const cancelEditGroup = () => {
+  editingGroupId.value = null
+  editingGroupName.value = ''
+}
+
+const saveGroupName = async (group) => {
+  const name = editingGroupName.value.trim()
+  if (!name) return
+  try {
+    const res = await api.put(`/round_robin_groups/${group.id}`, { round_robin_group: { name } })
+    const idx = groups.value.findIndex(g => g.id === group.id)
+    if (idx !== -1) groups.value[idx] = res.data
+    cancelEditGroup()
+  } catch (e) {
+    console.error('Erro ao renomear grupo', e)
+  }
+}
+
+const deleteGroup = async (group) => {
+  if (!confirm(`Excluir o grupo "${group.name}"? Os corretores e números de WhatsApp vinculados a ele voltam a usar o rodízio geral da conta.`)) return
+  try {
+    await api.delete(`/round_robin_groups/${group.id}`)
+    groups.value = groups.value.filter(g => g.id !== group.id)
+    fetchAgents()
+  } catch (e) {
+    console.error('Erro ao excluir grupo', e)
+  }
+}
+
+const queueByGroup = computed(() => {
+  const corretores = agents.value.filter(a =>
+    a.available_for_roundrobin && a.status === 'active' && a.department === 'corretor'
+  )
+  const sortFn = (a, b) => (a.queue_position ?? 9999) - (b.queue_position ?? 9999)
+
+  const buckets = groups.value.map(group => ({
+    group,
+    agents: corretores.filter(a => a.round_robin_group_id === group.id).sort(sortFn)
+  }))
+
+  const semGrupo = corretores.filter(a => !a.round_robin_group_id).sort(sortFn)
+  if (semGrupo.length > 0 || groups.value.length === 0) {
+    buckets.push({ group: null, agents: semGrupo })
+  }
+
+  return buckets
+})
+
+const agentQueuePosition = (agent) => {
+  const bucket = queueByGroup.value.find(b => (b.group?.id ?? null) === (agent.round_robin_group_id ?? null))
+  if (!bucket) return '?'
+  const idx = bucket.agents.findIndex(a => a.id === agent.id)
+  return idx === -1 ? '?' : idx + 1
+}
 
 const blockAgent = async (agent) => {
   if (!confirm(`Deseja bloquear ${agent.first_name}?`)) return
@@ -77,24 +163,60 @@ const toggleRoundRobin = async (agent) => {
     <div class="page-header">
       <div class="header-content">
         <h1>Agentes (Corretores)</h1>
-        <button class="btn-primary" @click="router.push('/agentes/novo')">
-          <Plus class="icon-sm" /> Novo Agente
-        </button>
+        <div class="header-actions">
+          <button class="btn-secondary" @click="showGroupManager = !showGroupManager">
+            {{ showGroupManager ? 'Fechar grupos' : 'Grupos de Rodízio' }}
+          </button>
+          <button class="btn-primary" @click="router.push('/agentes/novo')">
+            <Plus class="icon-sm" /> Novo Agente
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gestão de Grupos de Rodízio -->
+    <div class="groups-card" v-if="showGroupManager">
+      <div class="groups-header">
+        <span>Grupos de Rodízio</span>
+        <span class="queue-hint">Ex: Venda, Locação, Equipe do João — vincule cada número de WhatsApp a um grupo em Configurações → Canais.</span>
+      </div>
+      <div class="groups-list">
+        <div v-for="group in groups" :key="group.id" class="group-row">
+          <template v-if="editingGroupId === group.id">
+            <input v-model="editingGroupName" class="group-name-input" @keyup.enter="saveGroupName(group)" @keyup.esc="cancelEditGroup" />
+            <button class="btn-icon text-success" @click="saveGroupName(group)" title="Salvar"><Check class="icon-sm" /></button>
+            <button class="btn-icon" @click="cancelEditGroup" title="Cancelar"><X class="icon-sm" /></button>
+          </template>
+          <template v-else>
+            <span class="group-name">{{ group.name }}</span>
+            <button class="btn-icon" @click="startEditGroup(group)" title="Renomear"><Edit2 class="icon-sm" /></button>
+            <button class="btn-icon text-danger" @click="deleteGroup(group)" title="Excluir"><Trash2 class="icon-sm" /></button>
+          </template>
+        </div>
+        <div v-if="!groupsLoading && groups.length === 0" class="text-xs text-muted">Nenhum grupo criado ainda. Sem grupos, o rodízio funciona normalmente com todos os corretores da conta.</div>
+      </div>
+      <div class="group-add-row">
+        <input v-model="newGroupName" placeholder="Nome do novo grupo (ex: Locação)" @keyup.enter="createGroup" />
+        <button class="btn-secondary" @click="createGroup"><Plus class="icon-sm" /> Adicionar</button>
       </div>
     </div>
 
     <!-- Fila de Rodízio -->
-    <div class="queue-card" v-if="queueAgents.length > 0">
-      <div class="queue-header">
-        <RefreshCw class="icon-sm" />
-        <span>Fila de Rodízio — Corretores</span>
-        <span class="queue-hint">Novos leads são atribuídos ao 1º da fila</span>
-      </div>
-      <div class="queue-list">
-        <div v-for="(agent, idx) in queueAgents" :key="agent.id" class="queue-item">
-          <span class="queue-pos">{{ idx + 1 }}º</span>
-          <span class="queue-name">{{ agent.first_name }} {{ agent.last_name }}</span>
-          <span v-if="idx === 0" class="queue-next-badge">próximo</span>
+    <div class="queue-card" v-if="queueByGroup.some(b => b.agents.length > 0)">
+      <div v-for="bucket in queueByGroup" :key="bucket.group?.id ?? 'sem-grupo'">
+        <div v-if="bucket.agents.length > 0">
+          <div class="queue-header">
+            <RefreshCw class="icon-sm" />
+            <span>Fila de Rodízio — {{ bucket.group ? bucket.group.name : 'Sem grupo (conta inteira)' }}</span>
+            <span class="queue-hint">Novos leads são atribuídos ao 1º da fila</span>
+          </div>
+          <div class="queue-list">
+            <div v-for="(agent, idx) in bucket.agents" :key="agent.id" class="queue-item">
+              <span class="queue-pos">{{ idx + 1 }}º</span>
+              <span class="queue-name">{{ agent.first_name }} {{ agent.last_name }}</span>
+              <span v-if="idx === 0" class="queue-next-badge">próximo</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -167,7 +289,7 @@ const toggleRoundRobin = async (agent) => {
                 >
                   <span class="toggle-track"><span class="toggle-thumb"></span></span>
                   <span class="toggle-label">
-                    {{ agent.available_for_roundrobin ? `${queueAgents.findIndex(a => a.id === agent.id) + 1}º na fila` : 'Desligado' }}
+                    {{ agent.available_for_roundrobin ? `${agentQueuePosition(agent)}º na fila` : 'Desligado' }}
                   </span>
                 </button>
               </template>
@@ -213,6 +335,85 @@ const toggleRoundRobin = async (agent) => {
     justify-content: space-between;
     align-items: center;
     h1 { font-size: 1.2rem; color: var(--text-main); font-weight: 500; }
+  }
+  .header-actions {
+    display: flex;
+    gap: 0.75rem;
+  }
+}
+
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: var(--bg-secondary);
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  padding: 0.6rem 1rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  &:hover { border-color: var(--primary); color: var(--primary); }
+}
+
+.groups-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+
+  .groups-header {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text-main);
+    margin-bottom: 0.9rem;
+
+    .queue-hint { font-weight: 400; font-size: 0.78rem; color: var(--text-muted); }
+  }
+
+  .groups-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 0.9rem;
+  }
+
+  .group-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+
+    .group-name { flex: 1; color: var(--text-main); font-weight: 500; font-size: 0.88rem; }
+    .group-name-input {
+      flex: 1;
+      padding: 0.35rem 0.5rem;
+      border: 1px solid var(--primary);
+      border-radius: 4px;
+      background: var(--bg-primary);
+      color: var(--text-main);
+    }
+  }
+
+  .group-add-row {
+    display: flex;
+    gap: 0.5rem;
+
+    input {
+      flex: 1;
+      padding: 0.6rem 0.75rem;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      background: var(--bg-primary);
+      color: var(--text-main);
+      &:focus { outline: none; border-color: var(--primary); }
+    }
   }
 }
 

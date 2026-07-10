@@ -22,6 +22,7 @@ const activeTab = ref('settings')
 const agents = ref([])
 const isLoadingAgents = ref(false)
 const isPromptModalOpen = ref(false)
+const groups = ref([])
 
 const handlePromptGenerated = (generatedPrompt) => {
   inbox.value.ai_prompt = generatedPrompt
@@ -87,9 +88,19 @@ const toggleAgent = async (agent) => {
   }
 }
 
+const fetchGroups = async () => {
+  try {
+    const response = await api.get('/round_robin_groups')
+    groups.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch round robin groups:', error)
+  }
+}
+
 onMounted(() => {
   fetchInbox()
   fetchAgents()
+  fetchGroups()
 })
 
 const goBack = () => {
@@ -117,7 +128,8 @@ const saveSettings = async () => {
         followup_max_attempts: inbox.value.followup_max_attempts,
         followup_wait_time_minutes: inbox.value.followup_wait_time_minutes,
         followup_send_closing_message: inbox.value.followup_send_closing_message,
-        followup_closing_message: inbox.value.followup_closing_message
+        followup_closing_message: inbox.value.followup_closing_message,
+        round_robin_group_id: inbox.value.round_robin_group_id
       }
     })
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Configurações salvas!', showConfirmButton: false, timer: 3000 })
@@ -188,6 +200,19 @@ const saveSettings = async () => {
             <div class="input-col api-provider-row">
               <input type="text" class="form-input disabled-input" :value="inbox.provider.charAt(0).toUpperCase() + inbox.provider.slice(1)" disabled />
               <button class="btn-outline">Converter</button>
+            </div>
+          </div>
+
+          <div class="form-row" v-if="groups.length > 0">
+            <div class="label-col">
+              <label>Grupo de Rodízio</label>
+              <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem;">Leads que chegarem por este número serão atribuídos apenas aos corretores deste grupo.</p>
+            </div>
+            <div class="input-col">
+              <select class="form-input" v-model="inbox.round_robin_group_id">
+                <option :value="null">Sem grupo (rodízio com todos os corretores da conta)</option>
+                <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+              </select>
             </div>
           </div>
 

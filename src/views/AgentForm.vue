@@ -10,6 +10,7 @@ const route = useRoute()
 const isEditing = ref(false)
 const isLoading = ref(false)
 const showPassword = ref(false)
+const groups = ref([])
 
 const DEPARTMENTS = [
   { value: 'corretor',    label: 'Corretor',    desc: 'Atende novos leads de venda e locação' },
@@ -25,6 +26,7 @@ const form = ref({
   phone: '',
   password: '',
   department: 'corretor',
+  round_robin_group_id: null,
   status: 'active',
   permissions: {
     admin: false,
@@ -48,6 +50,7 @@ const fetchAgent = async (id) => {
       phone: data.phone || '',
       password: '',
       department: data.department || 'corretor',
+      round_robin_group_id: data.round_robin_group_id || null,
       status: data.status || 'active',
       permissions: data.permissions || {
         admin: false,
@@ -65,7 +68,17 @@ const fetchAgent = async (id) => {
   }
 }
 
+const fetchGroups = async () => {
+  try {
+    const res = await api.get('/round_robin_groups')
+    groups.value = res.data
+  } catch (e) {
+    console.error('Erro ao carregar grupos de rodízio', e)
+  }
+}
+
 onMounted(() => {
+  fetchGroups()
   if (route.params.id) {
     isEditing.value = true
     fetchAgent(route.params.id)
@@ -172,7 +185,15 @@ const saveAgent = async () => {
             </label>
           </div>
         </div>
-        
+
+        <div class="input-group" v-if="form.department === 'corretor' && groups.length > 0">
+          <label>Grupo de Rodízio <span class="text-muted text-xs">(opcional)</span></label>
+          <select v-model="form.round_robin_group_id">
+            <option :value="null">Sem grupo (rodízio com todos os corretores da conta)</option>
+            <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+          </select>
+        </div>
+
         <div class="input-group" v-if="isEditing">
           <label>Status</label>
           <select v-model="form.status">
