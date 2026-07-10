@@ -711,4 +711,8 @@ const funnelItems = computed(() => {
     .stat-value { font-size: 1.5rem; }
   }
 }
+
+@media (max-width: 480px) {
+  .grid-4 { grid-template-columns: 1fr; }
+}
 </style>

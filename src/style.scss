@@ -1,6 +1,8 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
+  color-scheme: light;
+
   --primary: #1f93ff;
   --primary-hover: #197bda;
   
@@ -23,6 +25,8 @@
 }
 
 .dark-theme {
+  color-scheme: dark;
+
   /* Dark Theme Variables (Chatwoot Precise Match) */
   --bg-primary: #151b2b; /* Very dark blue for almost everything */
   --bg-secondary: #171d2d; /* Slightly different shade for panels */
