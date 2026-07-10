@@ -833,4 +833,30 @@ const goBack = () => {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+@media (max-width: 768px) {
+  .wizard-container {
+    flex-direction: column;
+    margin: 1rem;
+  }
+
+  .stepper-sidebar {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    padding: 1.25rem 1rem;
+  }
+
+  .step-item {
+    min-height: auto;
+  }
+
+  .wizard-content {
+    padding: 1.25rem 1rem;
+  }
+
+  .qr-modal {
+    width: calc(100vw - 2rem);
+  }
+}
 </style>

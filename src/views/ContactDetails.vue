@@ -982,4 +982,23 @@ const saveNote = async () => {
     white-space: pre-wrap;
   }
 }
+
+@media (max-width: 900px) {
+  .content-grid {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .page-header {
+    padding: 1rem;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+}
+
+@media (max-width: 500px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+}
 </style>

@@ -636,4 +636,18 @@ onMounted(() => {
   background: #fef2f2;
 }
 
+@media (max-width: 768px) {
+  .layout-container {
+    flex-direction: column;
+    height: auto;
+    min-height: calc(100vh - 180px);
+  }
+
+  .tickets-sidebar {
+    width: 100%;
+    max-height: 240px;
+    border-right: none;
+    border-bottom: 1px solid #e2e8f0;
+  }
+}
 </style>

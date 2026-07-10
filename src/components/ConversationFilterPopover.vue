@@ -275,4 +275,33 @@ const applyFilters = () => {
 .btn-primary:hover {
   background: #155ECC;
 }
+
+@media (max-width: 480px) {
+  .filter-popover {
+    position: fixed;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: auto;
+    margin-top: 0;
+    border-radius: 12px 12px 0 0;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .filter-row {
+    flex-wrap: wrap;
+  }
+
+  .popover-actions-bottom {
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  .right-actions {
+    flex-direction: column;
+  }
+}
 </style>

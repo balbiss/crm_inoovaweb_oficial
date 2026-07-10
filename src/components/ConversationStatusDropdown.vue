@@ -191,6 +191,7 @@ const reopen = async () => {
   border-radius: 6px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
   min-width: 180px;
+  max-width: calc(100vw - 2rem);
   z-index: 100;
   padding: 0.25rem 0;
   display: flex;

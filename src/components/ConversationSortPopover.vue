@@ -75,6 +75,7 @@ watch([localStatus, localSortBy, localType], () => {
   left: 0;
   margin-top: 8px;
   width: 250px;
+  max-width: calc(100vw - 2rem);
   background: white;
   border-radius: 8px;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);

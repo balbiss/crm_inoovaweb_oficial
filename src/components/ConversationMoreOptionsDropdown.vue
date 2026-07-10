@@ -148,6 +148,7 @@ const downloadTranscript = async () => {
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   min-width: 210px;
+  max-width: calc(100vw - 2rem);
   z-index: 100;
   padding: 0.3rem 0;
   display: flex;

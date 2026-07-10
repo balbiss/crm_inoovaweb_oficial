@@ -844,4 +844,40 @@ const saveSettings = async () => {
 .btn-magic-sm:hover {
   opacity: 0.9;
 }
+
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1.25rem 1rem;
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .label-col {
+    width: 100%;
+  }
+
+  .day-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .day-checkbox {
+    width: 100%;
+  }
+
+  .day-closed {
+    width: 100%;
+    text-align: left;
+  }
+
+  .agent-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+  }
+}
 </style>
