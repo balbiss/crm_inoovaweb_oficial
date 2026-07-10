@@ -423,6 +423,32 @@ const resumeAi = async () => {
   }
 }
 
+const newTagName = ref('')
+
+const removeTag = async (tagId) => {
+  const convId = store.activeConversationId
+  if (!convId) return
+  try {
+    await api.delete(`/conversations/${convId}/tags/${tagId}`)
+  } catch (e) {
+    console.error('Erro ao remover etiqueta:', e)
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao remover etiqueta.', showConfirmButton: false, timer: 3000 })
+  }
+}
+
+const addTag = async () => {
+  const convId = store.activeConversationId
+  const name = newTagName.value.trim()
+  if (!convId || !name) return
+  try {
+    await api.post(`/conversations/${convId}/tags`, { name })
+    newTagName.value = ''
+  } catch (e) {
+    console.error('Erro ao adicionar etiqueta:', e)
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Erro ao adicionar etiqueta.', showConfirmButton: false, timer: 3000 })
+  }
+}
+
 const formatAiRemaining = (seconds) => {
   if (!seconds || seconds <= 0) return '0 min'
   const m = Math.floor(seconds / 60)
@@ -775,6 +801,34 @@ onUnmounted(() => {
         </div>
       </div>
       <div class="accordion-card">
+        <div class="card-header">
+          <h3>Etiquetas</h3>
+        </div>
+        <div class="card-body" style="padding-top: 0.5rem; padding-bottom: 1rem;">
+          <div class="tag-chips">
+            <span
+              v-for="tag in store.activeConversation?.tags || []"
+              :key="tag.id"
+              class="tag-chip"
+              :style="{ background: tag.color }"
+            >
+              {{ tag.name }}
+              <button class="tag-remove" @click="removeTag(tag.id)" title="Remover etiqueta (reativa a IA se for 'agente_off')">×</button>
+            </span>
+            <span v-if="!store.activeConversation?.tags?.length" class="empty-text">Nenhuma etiqueta</span>
+          </div>
+          <div class="tag-add-row">
+            <input
+              v-model="newTagName"
+              @keyup.enter="addTag"
+              placeholder="Nova etiqueta..."
+              class="tag-input"
+            />
+            <button class="btn-text-blue" @click="addTag" :disabled="!newTagName.trim()">Adicionar</button>
+          </div>
+        </div>
+      </div>
+      <div class="accordion-card">
         <div class="card-header" @click="isAttributesOpen = !isAttributesOpen" style="cursor: pointer;">
           <h3>Atributos do contato</h3>
           <Minus v-if="isAttributesOpen" class="icon-sm" />
@@ -1086,6 +1140,58 @@ onUnmounted(() => {
     font-weight: 700;
     letter-spacing: 0.01em;
     box-shadow: 0 2px 6px rgba(79,70,229,0.4);
+  }
+
+  .tag-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 0.75rem;
+  }
+
+  .tag-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 3px 6px 3px 10px;
+    border-radius: 10px;
+    color: #fff;
+    text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  }
+
+  .tag-remove {
+    background: rgba(0,0,0,0.15);
+    border: none;
+    color: #fff;
+    border-radius: 50%;
+    width: 16px;
+    height: 16px;
+    line-height: 1;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    &:hover { background: rgba(0,0,0,0.3); }
+  }
+
+  .tag-add-row {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .tag-input {
+    flex: 1;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--bg-primary);
+    color: var(--text-main);
+    font-size: 0.85rem;
+    &:focus { outline: none; border-color: var(--primary); }
   }
 
   .conv-preview {
