@@ -87,6 +87,25 @@
         </div>
       </div>
     </div>
+
+        <!-- Seção de Meta Ads (Lead Ads) -->
+        <div class="settings-card">
+          <h2 class="section-title">Meta Ads (Geração de Cadastros)</h2>
+          <p class="section-description">Conecte a Página do Facebook usada nas suas campanhas de anúncio com formulário — os leads caem automaticamente aqui no CRM.</p>
+
+          <div v-if="facebookPageName" class="status-active">
+            <p><strong>Conectado:</strong> {{ facebookPageName }} <span class="badge success">Ativo</span></p>
+            <button class="btn btn-secondary" :disabled="loadingFacebookLeads" @click="disconnectFacebookLeads">
+              {{ loadingFacebookLeads ? 'Desconectando...' : 'Desconectar' }}
+            </button>
+          </div>
+          <div v-else class="status-inactive">
+            <p>Nenhuma Página conectada ainda.</p>
+            <button class="btn btn-primary" :disabled="loadingFacebookLeads" @click="connectFacebookLeads">
+              {{ loadingFacebookLeads ? 'Redirecionando...' : 'Conectar Facebook' }}
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -117,6 +136,9 @@ const passwordForm = ref({
   password_confirmation: ''
 })
 
+const facebookPageName = ref('')
+const loadingFacebookLeads = ref(false)
+
 const fetchAccountData = async () => {
   try {
     const response = await api.get('/account')
@@ -125,6 +147,7 @@ const fetchAccountData = async () => {
     subscriptionStatus.value = response.data.subscription_status
     trialEndsAt.value = response.data.trial_ends_at
     planName.value = response.data.plan_name
+    facebookPageName.value = response.data.facebook_page_name || ''
     
     // Se o trial_ends_at for no futuro e não for active, mostramos como trialing no visual
     if (subscriptionStatus.value !== 'active' && trialEndsAt.value && new Date(trialEndsAt.value) > new Date()) {
@@ -142,7 +165,37 @@ onMounted(() => {
   if (window.location.search.includes('blocked=true')) {
     showTrialWarning.value = true
   }
+
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('facebook_leads_connected')) {
+    Swal.fire({ icon: 'success', title: 'Facebook conectado!', text: 'Os leads das suas campanhas já vão cair aqui no CRM.', confirmButtonColor: '#1f73ff' })
+  } else if (params.get('facebook_leads_error')) {
+    Swal.fire({ icon: 'error', title: 'Erro ao conectar', text: params.get('facebook_leads_error'), confirmButtonColor: '#1f73ff' })
+  }
 })
+
+const connectFacebookLeads = async () => {
+  loadingFacebookLeads.value = true
+  try {
+    const response = await api.get('/facebook_leads_oauth/authorize_url')
+    window.location.href = response.data.url
+  } catch (error) {
+    loadingFacebookLeads.value = false
+    Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível iniciar a conexão com o Facebook.', confirmButtonColor: '#1f73ff' })
+  }
+}
+
+const disconnectFacebookLeads = async () => {
+  loadingFacebookLeads.value = true
+  try {
+    await api.post('/facebook_leads_oauth/disconnect')
+    facebookPageName.value = ''
+  } catch (error) {
+    Swal.fire({ icon: 'error', title: 'Erro', text: 'Não foi possível desconectar.', confirmButtonColor: '#1f73ff' })
+  } finally {
+    loadingFacebookLeads.value = false
+  }
+}
 
 const formatDate = (dateString) => {
   if (!dateString) return ''
