@@ -1127,8 +1127,8 @@ onUnmounted(() => {
       flex-shrink: 0;
 
       svg {
-        width: 13px;
-        height: 13px;
+        width: 17px;
+        height: 17px;
       }
     }
   }
