@@ -23,15 +23,15 @@ export const useInboxesStore = defineStore('inboxes', {
           const oldInbox = this.inboxes.find(i => i.id === newInbox.id)
           return {
             ...newInbox,
-            connected: oldInbox && oldInbox.connected !== undefined ? oldInbox.connected : (newInbox.provider === 'baileys' ? undefined : null)
+            connected: oldInbox && oldInbox.connected !== undefined ? oldInbox.connected : (['baileys', 'instagram'].includes(newInbox.provider) ? undefined : null)
           }
         })
-        
+
         this.isLoadedOnce = true
-        
-        // Busca os status do Baileys em background
+
+        // Busca os status do Baileys/Instagram em background
         this.inboxes.forEach(inbox => {
-          if (inbox.provider === 'baileys') {
+          if (['baileys', 'instagram'].includes(inbox.provider)) {
             this.checkStatus(inbox.id)
           }
         })

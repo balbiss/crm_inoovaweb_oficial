@@ -550,7 +550,8 @@ const handleLogout = () => {
             class="nav-item sub-item"
             exact-active-class="active"
           >
-            <img v-if="inbox.provider === 'whatsapp'" src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" class="icon-img" />
+            <img v-if="inbox.provider === 'baileys'" src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WA" class="icon-img" />
+            <img v-else-if="inbox.provider === 'instagram'" src="https://upload.wikimedia.org/wikipedia/commons/a/a5/Instagram_icon.png" alt="IG" class="icon-img" />
             <Hash v-else class="icon" />
             <span>{{ inbox.name }}</span>
           </router-link>

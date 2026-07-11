@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ChevronLeft, Sparkles } from 'lucide-vue-next'
 import api from '../api'
@@ -11,13 +11,15 @@ const router = useRouter()
 const inbox = ref(null)
 const isLoading = ref(true)
 
-const tabs = [
+const allTabs = [
   { id: 'settings', name: 'Configurações' },
   { id: 'agents', name: 'Agentes' },
   { id: 'hours', name: 'Horário de funcionamento' },
   { id: 'bot', name: 'Secretária Virtual' },
   { id: 'followup', name: 'Resgate (Follow-up)' }
 ]
+// Follow-up não é permitido no Instagram (janela de 24h da Meta)
+const tabs = computed(() => allTabs.filter(t => t.id !== 'followup' || inbox.value?.provider !== 'instagram'))
 const activeTab = ref('settings')
 const agents = ref([])
 const isLoadingAgents = ref(false)
