@@ -30,6 +30,16 @@ const router = createRouter({
       component: () => import('../views/ResetPassword.vue')
     },
     {
+      path: '/politica-de-privacidade',
+      name: 'privacy-policy',
+      component: () => import('../views/PrivacyPolicy.vue')
+    },
+    {
+      path: '/termos-de-uso',
+      name: 'terms-of-use',
+      component: () => import('../views/TermsOfUse.vue')
+    },
+    {
       path: '/',
       component: () => import('../views/DashboardLayout.vue'),
       children: [
@@ -234,7 +244,7 @@ router.beforeEach((to, _from, next) => {
   } catch (e) {}
 
   // Rota pública: não precisa de autenticação
-  const publicRoutes = ['login', 'register', 'forgot-password', 'reset-password']
+  const publicRoutes = ['login', 'register', 'forgot-password', 'reset-password', 'privacy-policy', 'terms-of-use']
   if (publicRoutes.includes(to.name)) {
     return next()
   }
