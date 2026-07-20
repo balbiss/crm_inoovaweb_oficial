@@ -108,24 +108,25 @@ const router = createRouter({
           name: 'agendamentos_editar',
           component: () => import('../views/AppointmentForm.vue')
         },
-        // Rotas exclusivas do dono (empresa/admin)
+        // Rotas do dono (empresa/admin) -- gerente de equipe também acessa
+        // estas 3, mas fica restrito à própria equipe (ver AgentsController)
         {
           path: 'agentes',
           name: 'agentes',
           component: () => import('../views/Agents.vue'),
-          meta: { requiresOwner: true }
+          meta: { requiresOwnerOrManager: true }
         },
         {
           path: 'agentes/novo',
           name: 'agentes_novo',
           component: () => import('../views/AgentForm.vue'),
-          meta: { requiresOwner: true }
+          meta: { requiresOwnerOrManager: true }
         },
         {
           path: 'agentes/:id/editar',
           name: 'agentes_editar',
           component: () => import('../views/AgentForm.vue'),
-          meta: { requiresOwner: true }
+          meta: { requiresOwnerOrManager: true }
         },
         {
           path: 'settings/inboxes',
@@ -250,6 +251,12 @@ router.beforeEach((to, _from, next) => {
 
   // Rotas com requiresOwner: empresa, admin, ou agente com permissao administrativa total
   if (to.meta?.requiresOwner && user && !OWNER_ROLES.includes(user.role) && !user.permissions?.admin) {
+    return next({ name: 'dashboard' })
+  }
+
+  // requiresOwnerOrManager: mesmas regras do requiresOwner, mas também libera
+  // o gerente de equipe (restrito à própria equipe dentro da tela)
+  if (to.meta?.requiresOwnerOrManager && user && !OWNER_ROLES.includes(user.role) && !user.permissions?.admin && user.department !== 'gerente') {
     return next({ name: 'dashboard' })
   }
 

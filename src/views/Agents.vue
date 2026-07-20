@@ -48,6 +48,22 @@ onMounted(() => {
   fetchGroups()
 })
 
+const isOwner = computed(() => {
+  const u = currentUser.value
+  return !!u && (['admin', 'empresa'].includes(u.role) || !!u.permissions?.admin)
+})
+const isTeamManager = computed(() => currentUser.value?.department === 'gerente')
+
+// Gerente só enxerga a própria equipe (corretores do mesmo grupo) + ele mesmo.
+const visibleAgents = computed(() => {
+  if (isOwner.value || !isTeamManager.value) return agents.value
+  const groupId = currentUser.value.round_robin_group_id
+  return agents.value.filter(a =>
+    a.id === currentUser.value.id ||
+    (a.department === 'corretor' && a.round_robin_group_id === groupId)
+  )
+})
+
 const createGroup = async () => {
   const name = newGroupName.value.trim()
   if (!name) return
@@ -95,12 +111,16 @@ const deleteGroup = async (group) => {
 }
 
 const queueByGroup = computed(() => {
-  const corretores = agents.value.filter(a =>
+  const corretores = visibleAgents.value.filter(a =>
     a.available_for_roundrobin && a.status === 'active' && a.department === 'corretor'
   )
   const sortFn = (a, b) => (a.queue_position ?? 9999) - (b.queue_position ?? 9999)
 
-  const buckets = groups.value.map(group => ({
+  const visibleGroups = isTeamManager.value && !isOwner.value
+    ? groups.value.filter(g => g.id === currentUser.value.round_robin_group_id)
+    : groups.value
+
+  const buckets = visibleGroups.map(group => ({
     group,
     agents: corretores.filter(a => a.round_robin_group_id === group.id).sort(sortFn)
   }))
@@ -165,7 +185,7 @@ const toggleRoundRobin = async (agent) => {
       <div class="header-content">
         <h1>Agentes (Corretores)</h1>
         <div class="header-actions">
-          <button class="btn-secondary" @click="showGroupManager = !showGroupManager">
+          <button v-if="isOwner" class="btn-secondary" @click="showGroupManager = !showGroupManager">
             {{ showGroupManager ? 'Fechar grupos' : 'Grupos de Rodízio' }}
           </button>
           <button class="btn-primary" @click="router.push('/agentes/novo')">
@@ -176,7 +196,7 @@ const toggleRoundRobin = async (agent) => {
     </div>
 
     <!-- Gestão de Grupos de Rodízio -->
-    <div class="groups-card" v-if="showGroupManager">
+    <div class="groups-card" v-if="showGroupManager && isOwner">
       <div class="groups-header">
         <span>Grupos de Rodízio</span>
         <span class="queue-hint">Ex: Venda, Locação, Equipe do João — vincule cada número de WhatsApp a um grupo em Configurações → Canais.</span>
@@ -251,10 +271,10 @@ const toggleRoundRobin = async (agent) => {
               <td><div class="skeleton-action"></div></td>
             </tr>
           </template>
-          <tr v-else-if="agents.length === 0">
+          <tr v-else-if="visibleAgents.length === 0">
             <td colspan="7" class="text-center py-4 text-muted">Nenhum agente cadastrado.</td>
           </tr>
-          <tr v-for="agent in agents" :key="agent.id" :class="{'row-blocked': agent.status === 'blocked'}">
+          <tr v-for="agent in visibleAgents" :key="agent.id" :class="{'row-blocked': agent.status === 'blocked'}">
             <td>
               <span :class="['badge', agent.status === 'blocked' ? 'badge-danger' : 'badge-success']">
                 {{ agent.status === 'blocked' ? 'Bloqueado' : 'Ativo' }}
@@ -300,7 +320,7 @@ const toggleRoundRobin = async (agent) => {
               <span v-else class="text-xs text-muted">— encaminhado pela IA</span>
             </td>
             <td class="actions-cell">
-              <button class="btn-icon" @click="router.push(`/agentes/${agent.id}/editar`)" title="Editar">
+              <button v-if="isOwner || agent.id !== currentUser.id" class="btn-icon" @click="router.push(`/agentes/${agent.id}/editar`)" title="Editar">
                 <Edit2 class="icon-sm" />
               </button>
               <template v-if="currentUser && agent.id !== currentUser.id">
@@ -310,7 +330,7 @@ const toggleRoundRobin = async (agent) => {
                 <button v-else class="btn-icon text-success" @click="unblockAgent(agent)" title="Desbloquear">
                   <Unlock class="icon-sm" />
                 </button>
-                <button class="btn-icon text-danger" @click="deleteAgent(agent.id)" title="Excluir">
+                <button v-if="isOwner" class="btn-icon text-danger" @click="deleteAgent(agent.id)" title="Excluir">
                   <Trash2 class="icon-sm" />
                 </button>
               </template>

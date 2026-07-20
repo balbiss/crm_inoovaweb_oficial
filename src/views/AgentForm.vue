@@ -12,6 +12,13 @@ const isLoading = ref(false)
 const showPassword = ref(false)
 const groups = ref([])
 
+const storedUser = (() => {
+  try { return JSON.parse(localStorage.getItem('user')) } catch (e) { return null }
+})()
+const isOwner = !!storedUser && (['admin', 'empresa'].includes(storedUser.role) || !!storedUser.permissions?.admin)
+const isTeamManager = !isOwner && storedUser?.department === 'gerente'
+const myTeamName = ref('')
+
 const DEPARTMENTS = [
   { value: 'corretor',    label: 'Corretor',    desc: 'Atende novos leads de venda e locação' },
   { value: 'suporte',     label: 'Suporte',     desc: 'Atende clientes com problemas no imóvel' },
@@ -78,8 +85,13 @@ const fetchGroups = async () => {
   }
 }
 
-onMounted(() => {
-  fetchGroups()
+onMounted(async () => {
+  await fetchGroups()
+  if (isTeamManager) {
+    myTeamName.value = groups.value.find(g => g.id === storedUser.round_robin_group_id)?.name || ''
+    form.value.department = 'corretor'
+    form.value.round_robin_group_id = storedUser.round_robin_group_id
+  }
   if (route.params.id) {
     isEditing.value = true
     fetchAgent(route.params.id)
@@ -168,7 +180,12 @@ const saveAgent = async () => {
           </div>
         </div>
 
-        <div class="input-group">
+        <div class="input-group" v-if="isTeamManager">
+          <label>Departamento</label>
+          <p class="text-muted text-xs" style="margin-top:0">Corretor — cadastrado como gerente, você só pode adicionar corretores à sua própria equipe{{ myTeamName ? ` (${myTeamName})` : '' }}.</p>
+        </div>
+
+        <div class="input-group" v-if="!isTeamManager">
           <label>Departamento</label>
           <div class="dept-options">
             <label
@@ -187,7 +204,7 @@ const saveAgent = async () => {
           </div>
         </div>
 
-        <div class="input-group" v-if="form.department === 'corretor' && groups.length > 0">
+        <div class="input-group" v-if="!isTeamManager && form.department === 'corretor' && groups.length > 0">
           <label>Grupo de Rodízio <span class="text-muted text-xs">(opcional)</span></label>
           <select v-model="form.round_robin_group_id">
             <option :value="null">Sem grupo (rodízio com todos os corretores da conta)</option>
@@ -195,7 +212,7 @@ const saveAgent = async () => {
           </select>
         </div>
 
-        <div class="input-group" v-if="form.department === 'gerente'">
+        <div class="input-group" v-if="!isTeamManager && form.department === 'gerente'">
           <label>Equipe que Gerencia</label>
           <select v-model="form.round_robin_group_id">
             <option :value="null">Nenhuma (por enquanto só verá as próprias conversas)</option>
@@ -214,7 +231,7 @@ const saveAgent = async () => {
       </div>
 
       <!-- Coluna da Direita: Permissões -->
-      <div class="card permissions-card">
+      <div class="card permissions-card" v-if="!isTeamManager && form.department !== 'gerente'">
         <h3>Permissões de Acesso</h3>
         <p class="subtitle">Defina o que este corretor poderá ver ou fazer no sistema.</p>
 

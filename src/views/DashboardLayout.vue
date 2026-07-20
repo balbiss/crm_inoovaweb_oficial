@@ -155,6 +155,9 @@ const isAdminOrEmpresa = computed(() => {
   return ['admin', 'empresa'].includes(currentUser.value.role) || !!currentUser.value.permissions?.admin
 })
 
+const isTeamManager = computed(() => currentUser.value.department === 'gerente')
+const canManageAgents = computed(() => isAdminOrEmpresa.value || isTeamManager.value)
+
 const userInitials = () => {
   const fn = currentUser.value.first_name || ''
   const ln = currentUser.value.last_name || ''
@@ -521,7 +524,7 @@ const handleLogout = () => {
           <span>Agendamentos</span>
         </router-link>
 
-        <router-link v-if="isAdminOrEmpresa" to="/agentes" class="nav-item" active-class="active">
+        <router-link v-if="canManageAgents" to="/agentes" class="nav-item" active-class="active">
           <Badge class="icon" />
           <span>Agentes</span>
         </router-link>
