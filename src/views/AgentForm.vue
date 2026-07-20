@@ -17,6 +17,7 @@ const DEPARTMENTS = [
   { value: 'suporte',     label: 'Suporte',     desc: 'Atende clientes com problemas no imóvel' },
   { value: 'financeiro',  label: 'Financeiro',  desc: 'Cobranças, boletos e contratos' },
   { value: 'manutencao',  label: 'Manutenção',  desc: 'Reparos e serviços técnicos' },
+  { value: 'gerente',     label: 'Gerente',     desc: 'Supervisiona uma equipe e vê as conversas, clientes e agendamentos do time' },
 ]
 
 const form = ref({
@@ -192,6 +193,15 @@ const saveAgent = async () => {
             <option :value="null">Sem grupo (rodízio com todos os corretores da conta)</option>
             <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
           </select>
+        </div>
+
+        <div class="input-group" v-if="form.department === 'gerente'">
+          <label>Equipe que Gerencia</label>
+          <select v-model="form.round_robin_group_id">
+            <option :value="null">Nenhuma (por enquanto só verá as próprias conversas)</option>
+            <option v-for="group in groups" :key="group.id" :value="group.id">{{ group.name }}</option>
+          </select>
+          <small class="text-muted text-xs">Ele vai ver as conversas, clientes e agendamentos de todos os corretores desse grupo — nunca dos outros grupos.</small>
         </div>
 
         <div class="input-group" v-if="isEditing">
@@ -496,6 +506,7 @@ const saveAgent = async () => {
   &.dept-suporte    { background: #10b981; }
   &.dept-financeiro { background: #f59e0b; }
   &.dept-manutencao { background: #f97316; }
+  &.dept-gerente    { background: #be185d; }
 }
 .dept-info {
   display: flex; flex-direction: column; gap: 0.1rem;

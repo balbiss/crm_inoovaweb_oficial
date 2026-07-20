@@ -8,6 +8,7 @@ const DEPT_CONFIG = {
   suporte:     { label: 'Suporte',     color: '#059669', bg: 'rgba(5,150,105,0.1)' },
   financeiro:  { label: 'Financeiro',  color: '#d97706', bg: 'rgba(217,119,6,0.1)' },
   manutencao:  { label: 'Manutenção',  color: '#ea580c', bg: 'rgba(234,88,12,0.1)' },
+  gerente:     { label: 'Gerente',     color: '#be185d', bg: 'rgba(190,24,93,0.1)' },
 }
 import api from '../api'
 import { useAgentsStore } from '../store/agents'
@@ -293,6 +294,9 @@ const toggleRoundRobin = async (agent) => {
                   </span>
                 </button>
               </template>
+              <span v-else-if="agent.department === 'gerente'" class="text-xs text-muted">
+                {{ groups.find(g => g.id === agent.round_robin_group_id)?.name || 'Sem equipe definida' }}
+              </span>
               <span v-else class="text-xs text-muted">— encaminhado pela IA</span>
             </td>
             <td class="actions-cell">
