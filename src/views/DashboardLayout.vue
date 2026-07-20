@@ -1216,6 +1216,7 @@ const handleLogout = () => {
     align-items: center;
     gap: 0.75rem;
     padding: 0.75rem 1rem;
+    padding-top: max(0.75rem, env(safe-area-inset-top));
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-color);
     flex-shrink: 0;
