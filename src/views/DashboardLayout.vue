@@ -173,9 +173,26 @@ const userDisplayName = () => {
 import { brand } from '../config/brand'
 import { usePushNotifications } from '../composables/usePushNotifications'
 import { useInstallPrompt } from '../composables/useInstallPrompt'
+import NotificationPermissionModal from '../components/NotificationPermissionModal.vue'
 
 const { subscribe: subscribePush } = usePushNotifications()
 const { canInstall, isInstalled, isStandalone: isAppStandalone, promptInstall } = useInstallPrompt()
+
+const showNotificationModal = ref(false)
+
+const checkNotificationModal = () => {
+  if (!('Notification' in window)) return
+  if (Notification.permission !== 'default') return
+  if (localStorage.getItem('notification_modal_dismissed') === 'true') return
+
+  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
+  const isStandalone = navigator.standalone === true || window.matchMedia('(display-mode: standalone)').matches
+  // No iOS só faz sentido pedir depois de instalado -- fora disso a Apple
+  // nem deixa a permissão de notificação funcionar de verdade.
+  if (isIOS && !isStandalone) return
+
+  showNotificationModal.value = true
+}
 
 const showIosInstallBanner = ref(false)
 const androidInstallDismissed = ref(localStorage.getItem('android_install_banner_dismissed') === 'true')
@@ -290,8 +307,12 @@ const handleVisibilityChange = () => {
 onMounted(() => {
   loadUser()
   checkIosInstallBanner()
+  checkNotificationModal()
 
-  // Push notifications — pede permissão após login (silencioso se negado)
+  // Push notifications — pede permissão após login (silencioso se negado).
+  // No iPhone isso normalmente não mostra nada de verdade pro usuário (o
+  // Safari exige um clique real pra exibir o prompt) -- o modal acima é
+  // quem cobre esse caso com um botão de verdade pra clicar.
   subscribePush()
 
   // Navegação disparada pelo toque na push notification (quando app estava fechado)
@@ -628,6 +649,8 @@ const handleLogout = () => {
         </div>
       </div>
     </aside>
+
+    <NotificationPermissionModal v-if="showNotificationModal" @close="showNotificationModal = false" />
 
     <!-- Main Content Area -->
     <main class="main-content">
