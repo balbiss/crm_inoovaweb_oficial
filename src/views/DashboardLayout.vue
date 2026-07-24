@@ -9,6 +9,7 @@ import { usePropertiesStore } from '../store/properties'
 import { useCondominiumsStore } from '../store/condominiums'
 import { useAppointmentsStore } from '../store/appointments'
 import { useAgentsStore } from '../store/agents'
+import ReconnectInboxModal from '../components/ReconnectInboxModal.vue'
 import {
   Search,
   Inbox,
@@ -157,6 +158,26 @@ const isAdminOrEmpresa = computed(() => {
 
 const isTeamManager = computed(() => currentUser.value.department === 'gerente')
 const canManageAgents = computed(() => isAdminOrEmpresa.value || isTeamManager.value)
+
+// Aviso de WhatsApp desconectado visível em qualquer tela (não só na tela de
+// Caixas de Entrada) -- pedido real de clientes que só descobriam a queda
+// quando um lead reclamava de não receber resposta.
+const disconnectedBaileysInboxes = computed(() =>
+  inboxesStore.inboxes.filter(i => i.provider === 'baileys' && i.connected === false)
+)
+const reconnectingInboxGlobal = ref(null)
+const openReconnectGlobal = (inbox) => { reconnectingInboxGlobal.value = inbox }
+const closeReconnectGlobal = () => { reconnectingInboxGlobal.value = null }
+const handleReconnectedGlobal = () => {
+  if (reconnectingInboxGlobal.value) {
+    inboxesStore.checkStatus(reconnectingInboxGlobal.value.id)
+  }
+}
+const handleInboxUpdatedGlobal = (e) => {
+  const data = e.detail
+  const inbox = inboxesStore.inboxes.find(i => i.id === Number(data.inbox_id))
+  if (inbox) inbox.connected = data.connection_status === 'open'
+}
 
 const userInitials = () => {
   const fn = currentUser.value.first_name || ''
@@ -345,6 +366,7 @@ onMounted(() => {
   window.addEventListener('lead-atribuido', handleLeadAtribuido)
   window.addEventListener('property-match-found', handlePropertyMatchFound)
   window.addEventListener('snooze-expired', handleSnoozeExpired)
+  window.addEventListener('inbox-updated', handleInboxUpdatedGlobal)
 })
 
 const handleLeadAtribuido = (e) => {
@@ -434,6 +456,7 @@ onUnmounted(() => {
   window.removeEventListener('lead-atribuido', handleLeadAtribuido)
   window.removeEventListener('property-match-found', handlePropertyMatchFound)
   window.removeEventListener('snooze-expired', handleSnoozeExpired)
+  window.removeEventListener('inbox-updated', handleInboxUpdatedGlobal)
 })
 
 const handleLogout = () => {
@@ -661,6 +684,19 @@ const handleLogout = () => {
         </button>
         <span class="mobile-brand">{{ accountName() }}</span>
       </div>
+      <div v-if="disconnectedBaileysInboxes.length > 0" class="whatsapp-disconnected-banner">
+        <span>
+          ⚠️ WhatsApp desconectado: <strong>{{ disconnectedBaileysInboxes.map(i => i.name).join(', ') }}</strong> — os leads desse canal não estão recebendo resposta.
+        </span>
+        <button
+          v-if="isAdminOrEmpresa"
+          class="reconnect-cta-btn"
+          @click="openReconnectGlobal(disconnectedBaileysInboxes[0])"
+        >
+          Reconectar agora
+        </button>
+      </div>
+
       <div v-if="showIosInstallBanner" class="ios-install-banner">
         <span>📲 Adicione o VisitaIA à Tela de Início pra receber notificações e usar em tela cheia.</span>
         <button class="ios-install-banner-close" @click="dismissIosBanner">
@@ -677,6 +713,14 @@ const handleLogout = () => {
       </div>
       <router-view @click="closeMobileSidebar"></router-view>
     </main>
+
+    <ReconnectInboxModal
+      v-if="reconnectingInboxGlobal"
+      :inbox-id="reconnectingInboxGlobal.id"
+      :inbox-name="reconnectingInboxGlobal.name"
+      @close="closeReconnectGlobal"
+      @reconnected="handleReconnectedGlobal"
+    />
 
     <!-- Theme Command Palette -->
     <div class="palette-overlay" v-if="isThemePaletteOpen" @click.self="isThemePaletteOpen = false">
@@ -1171,6 +1215,33 @@ const handleLogout = () => {
 
 .mobile-overlay {
   display: none;
+}
+
+.whatsapp-disconnected-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 1rem;
+  background: #fef2f2;
+  border-bottom: 1px solid #fca5a5;
+  color: #991b1b;
+  font-size: 0.82rem;
+  line-height: 1.35;
+
+  span { flex: 1; }
+
+  .reconnect-cta-btn {
+    flex-shrink: 0;
+    background: #dc2626;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    padding: 0.35rem 0.8rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+    &:hover { background: #b91c1c; }
+  }
 }
 
 .ios-install-banner {

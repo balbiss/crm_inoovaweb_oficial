@@ -1,10 +1,11 @@
 <script setup>
-import { onMounted } from 'vue'
-import { Search, Settings2, Trash2, ChevronRight } from 'lucide-vue-next'
+import { onMounted, ref } from 'vue'
+import { Search, Settings2, Trash2, ChevronRight, RefreshCw } from 'lucide-vue-next'
 import api from '../api'
 import Swal from 'sweetalert2'
 import { useInboxesStore } from '../store/inboxes'
 import { storeToRefs } from 'pinia'
+import ReconnectInboxModal from '../components/ReconnectInboxModal.vue'
 
 const inboxesStore = useInboxesStore()
 const { inboxes, isLoading } = storeToRefs(inboxesStore)
@@ -12,6 +13,22 @@ const { inboxes, isLoading } = storeToRefs(inboxesStore)
 onMounted(() => {
   inboxesStore.fetchInboxes()
 })
+
+const reconnectingInbox = ref(null)
+
+const openReconnect = (inbox) => {
+  reconnectingInbox.value = inbox
+}
+
+const closeReconnect = () => {
+  reconnectingInbox.value = null
+}
+
+const handleReconnected = () => {
+  if (reconnectingInbox.value) {
+    inboxesStore.checkStatus(reconnectingInbox.value.id)
+  }
+}
 
 const deleteInbox = async (id) => {
   const result = await Swal.fire({
@@ -103,6 +120,14 @@ const deleteInbox = async (id) => {
             </div>
             
             <div class="inbox-actions">
+              <button
+                v-if="inbox.provider === 'baileys' && inbox.connected === false"
+                class="btn-reconnect"
+                @click="openReconnect(inbox)"
+                title="Reconectar WhatsApp"
+              >
+                <RefreshCw class="icon-sm" /> Reconectar
+              </button>
               <router-link :to="`/settings/inboxes/${inbox.id}`" class="icon-btn" title="Configurações"><Settings2 class="icon-sm" /></router-link>
               <button class="icon-btn text-danger" @click="deleteInbox(inbox.id)" title="Deletar"><Trash2 class="icon-sm" /></button>
             </div>
@@ -114,7 +139,14 @@ const deleteInbox = async (id) => {
         </template>
       </div>
     </div>
-    
+
+    <ReconnectInboxModal
+      v-if="reconnectingInbox"
+      :inbox-id="reconnectingInbox.id"
+      :inbox-name="reconnectingInbox.name"
+      @close="closeReconnect"
+      @reconnected="handleReconnected"
+    />
   </div>
 </template>
 
@@ -410,6 +442,24 @@ const deleteInbox = async (id) => {
   display: flex;
   align-items: center;
   gap: 0.5rem;
+
+  .btn-reconnect {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 6px;
+    border: 1px solid #fca5a5;
+    background: #fee2e2;
+    color: #dc2626;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+
+    &:hover {
+      background: #fecaca;
+    }
+  }
 
   .icon-btn {
     width: 32px;
