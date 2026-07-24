@@ -681,10 +681,10 @@ onUnmounted(() => {
             </div>
             <button class="clear-file-btn" @click="clearSelectedFile">&times;</button>
           </div>
-          <textarea 
-            v-model="newMessageText" 
-            @keydown.enter.prevent="handleSendMessage"
-            :placeholder="isPrivateMessage ? 'Digite uma nota privada...' : 'Digite sua mensagem aqui...'"
+          <textarea
+            v-model="newMessageText"
+            @keydown.enter.exact.prevent="handleSendMessage"
+            :placeholder="isPrivateMessage ? 'Digite sua nota privada... (Shift+Enter para nova linha)' : 'Digite sua mensagem aqui... (Shift+Enter para nova linha)'"
           ></textarea>
           <div class="input-actions">
             <div class="left-actions">
@@ -1480,6 +1480,7 @@ onUnmounted(() => {
     font-size: 0.95rem;
     line-height: 1.4;
     word-break: break-word;
+    white-space: pre-wrap;
     display: flex;
     flex-direction: column;
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
