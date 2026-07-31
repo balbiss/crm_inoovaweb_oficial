@@ -35,7 +35,8 @@ import {
   Loader2,
   BotOff,
   Bot,
-  CreditCard
+  CreditCard,
+  Mic
 } from '@lucide/vue'
 
 import api from '../api'
@@ -397,6 +398,88 @@ const handleSendMessage = () => {
   }
 }
 
+const isRecordingAudio = ref(false)
+const recordingSeconds = ref(0)
+let mediaRecorder = null
+let recordedChunks = []
+let recordingStream = null
+let recordingTimer = null
+
+const pickSupportedAudioMimeType = () => {
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4']
+  return candidates.find(type => window.MediaRecorder && MediaRecorder.isTypeSupported(type)) || ''
+}
+
+const formatRecordingTime = (seconds) => {
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+const stopMicStream = () => {
+  if (recordingStream) {
+    recordingStream.getTracks().forEach(track => track.stop())
+    recordingStream = null
+  }
+  if (recordingTimer) {
+    clearInterval(recordingTimer)
+    recordingTimer = null
+  }
+}
+
+const startRecording = async () => {
+  try {
+    recordingStream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  } catch (error) {
+    console.error('Erro ao acessar o microfone:', error)
+    Swal.fire({ toast: true, position: 'top-end', icon: 'error', title: 'Não foi possível acessar o microfone.', showConfirmButton: false, timer: 3500 })
+    return
+  }
+
+  recordedChunks = []
+  const mimeType = pickSupportedAudioMimeType()
+  mediaRecorder = mimeType ? new MediaRecorder(recordingStream, { mimeType }) : new MediaRecorder(recordingStream)
+  mediaRecorder.ondataavailable = (event) => {
+    if (event.data.size > 0) recordedChunks.push(event.data)
+  }
+  mediaRecorder.start()
+
+  isRecordingAudio.value = true
+  recordingSeconds.value = 0
+  recordingTimer = setInterval(() => { recordingSeconds.value++ }, 1000)
+}
+
+const stopRecordingAndSend = () => {
+  if (!mediaRecorder) return
+
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: mediaRecorder.mimeType || 'audio/webm' })
+    const extension = blob.type.includes('ogg') ? 'ogg' : blob.type.includes('mp4') ? 'm4a' : 'webm'
+    const file = new File([blob], `audio-gravado.${extension}`, { type: blob.type })
+    store.sendMessage('', isPrivateMessage.value, file)
+    scrollToBottom()
+    mediaRecorder = null
+  }
+  mediaRecorder.stop()
+  isRecordingAudio.value = false
+  stopMicStream()
+}
+
+const cancelRecording = () => {
+  if (mediaRecorder) {
+    mediaRecorder.onstop = null
+    mediaRecorder.stop()
+    mediaRecorder = null
+  }
+  recordedChunks = []
+  isRecordingAudio.value = false
+  stopMicStream()
+}
+
+onUnmounted(() => {
+  cancelRecording()
+})
+
 // IA pause status
 const aiPauseStatus = ref({ paused: false, remaining_seconds: 0 })
 const aiStatusInterval = ref(null)
@@ -681,12 +764,20 @@ onUnmounted(() => {
             </div>
             <button class="clear-file-btn" @click="clearSelectedFile">&times;</button>
           </div>
+          <div v-if="isRecordingAudio" class="recording-bar">
+            <button class="icon-btn recording-cancel" @click="cancelRecording" title="Cancelar gravação"><Trash2 class="icon-sm" /></button>
+            <span class="recording-dot"></span>
+            <span class="recording-time">{{ formatRecordingTime(recordingSeconds) }}</span>
+            <span class="recording-hint">Gravando áudio...</span>
+            <button class="btn-send" @click="stopRecordingAndSend" title="Enviar áudio">Enviar (↵)</button>
+          </div>
           <textarea
+            v-else
             v-model="newMessageText"
             @keydown.enter.exact.prevent="handleSendMessage"
             :placeholder="isPrivateMessage ? 'Digite sua nota privada... (Shift+Enter para nova linha)' : 'Digite sua mensagem aqui... (Shift+Enter para nova linha)'"
           ></textarea>
-          <div class="input-actions">
+          <div class="input-actions" v-if="!isRecordingAudio">
             <div class="left-actions">
               <input type="file" ref="fileInput" @change="handleFileChange" hidden />
               <button class="icon-btn" @click="triggerFileInput" title="Anexar arquivo"><Paperclip class="icon-sm" /></button>
@@ -696,6 +787,7 @@ onUnmounted(() => {
                   <EmojiPicker :native="true" @select="onSelectEmoji" />
                 </div>
               </div>
+              <button class="icon-btn" @click="startRecording" title="Gravar áudio"><Mic class="icon-sm" /></button>
               <!-- Indicador IA pausada -->
               <div v-if="aiPauseStatus.paused" class="ai-paused-pill">
                 <BotOff class="pill-icon" />
@@ -1691,6 +1783,44 @@ onUnmounted(() => {
       height: 13px;
     }
   }
+}
+
+.recording-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.4rem;
+  min-height: 60px;
+
+  .recording-cancel {
+    color: #ef4444;
+  }
+
+  .recording-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ef4444;
+    animation: recording-pulse 1.2s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  .recording-time {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    color: var(--text-main);
+  }
+
+  .recording-hint {
+    color: var(--text-muted);
+    font-size: 0.85rem;
+    flex: 1;
+  }
+}
+
+@keyframes recording-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.25; }
 }
 
 .ai-paused-pill {
