@@ -7,7 +7,11 @@ import api from '../api'
 import Swal from 'sweetalert2'
 
 const currentUser = JSON.parse(localStorage.getItem('user') || '{}')
-const isOwner     = computed(() => ['empresa', 'admin'].includes(currentUser.role))
+// Gerente (department === 'gerente') também vê Visão Geral/Por Corretor/Por
+// Etiqueta/Desempenho, só que restrito à própria equipe -- o backend já faz
+// esse recorte (ver reports_controller.rb). Sem checar department aqui, a
+// aba nem aparecia pro gerente, mesmo depois do backend liberar o acesso.
+const isOwner     = computed(() => ['empresa', 'admin'].includes(currentUser.role) || currentUser.department === 'gerente')
 
 ChartJS.register(Title, Tooltip, Legend, BarElement, ArcElement, CategoryScale, LinearScale)
 
