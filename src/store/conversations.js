@@ -104,15 +104,60 @@ export const useConversationsStore = defineStore('conversations', {
 
   actions: {
     async fetchConversations() {
-      try {
-        const response = await api.get('/conversations')
-        this.conversations = response.data
-        if (this.conversations.length > 0 && !this.activeConversationId) {
-          this.activeConversationId = this.conversations[0].id
+      // Evita dois carregamentos completos em paralelo (poll + reconnect do WS)
+      if (this._fetchingConversations) return this._fetchingConversations
+      this._fetchingConversations = (async () => {
+        try {
+          // Lista "leve" (sem mensagens), paginada até o fim — antes só vinha
+          // a 1ª página (100 conversas) e contas grandes "perdiam" conversas.
+          const perPage = 500
+          const all = []
+          for (let page = 1; page <= 50; page++) {
+            const response = await api.get('/conversations', { params: { lite: 1, page, per_page: perPage } })
+            all.push(...response.data)
+            if (response.data.length < perPage) break
+          }
+
+          // Preserva as mensagens já carregadas (conversa aberta) ao recarregar a lista
+          const previous = new Map(this.conversations.map(c => [c.id, c]))
+          all.forEach(conv => {
+            const old = previous.get(conv.id)
+            if (old && old.messages_loaded) {
+              conv.messages = old.messages
+              conv.messages_loaded = true
+            }
+          })
+          this.conversations = all
+
+          if (this.conversations.length > 0 && !this.activeConversationId) {
+            this.activeConversationId = this.conversations[0].id
+          }
+          if (this.activeConversationId) this.loadConversationMessages(this.activeConversationId)
+          this.setupWebSocket()
+        } catch (error) {
+          console.error('Error fetching conversations:', error)
+        } finally {
+          this._fetchingConversations = null
         }
-        this.setupWebSocket()
+      })()
+      return this._fetchingConversations
+    },
+
+    async loadConversationMessages(id) {
+      const conv = this.conversations.find(c => c.id === id)
+      if (!conv || conv.messages_loaded || conv._loadingMessages) return
+      conv._loadingMessages = true
+      try {
+        const response = await api.get(`/conversations/${id}`)
+        const target = this.conversations.find(c => c.id === id)
+        if (target) {
+          target.messages = response.data.messages || []
+          target.messages_loaded = true
+        }
       } catch (error) {
-        console.error('Error fetching conversations:', error)
+        console.error('Error loading conversation messages:', error)
+      } finally {
+        conv._loadingMessages = false
       }
     },
 
@@ -167,6 +212,7 @@ export const useConversationsStore = defineStore('conversations', {
       if (conv) {
         conv.unread = 0
       }
+      this.loadConversationMessages(id)
     },
 
     setFilter(filterType) {

@@ -725,7 +725,10 @@ onUnmounted(() => {
 
         </div>
 
-        <div class="empty-state" v-if="store.activeConversation.messages.length === 0">
+        <div class="empty-state" v-if="store.activeConversation.messages_loaded === false">
+          <p>Carregando mensagens...</p>
+        </div>
+        <div class="empty-state" v-else-if="store.activeConversation.messages.length === 0">
           <div class="icon-circle">
             <MessageCircle class="icon-lg" />
           </div>

@@ -40,4 +40,15 @@ api.interceptors.response.use(
   }
 )
 
+// Busca todas as páginas de um endpoint paginado (?page=&per_page=)
+export async function fetchAllPages(url, perPage = 200, maxPages = 100) {
+  const all = []
+  for (let page = 1; page <= maxPages; page++) {
+    const response = await api.get(url, { params: { page, per_page: perPage } })
+    all.push(...response.data)
+    if (response.data.length < perPage) break
+  }
+  return all
+}
+
 export default api

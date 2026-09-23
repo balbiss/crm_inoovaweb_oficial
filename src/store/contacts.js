@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import api from '../api'
+import { fetchAllPages } from '../api'
 
 export const useContactsStore = defineStore('contacts', {
   state: () => ({
@@ -15,8 +15,7 @@ export const useContactsStore = defineStore('contacts', {
       }
       
       try {
-        const response = await api.get('/contacts')
-        this.contacts = response.data
+        this.contacts = await fetchAllPages('/contacts', 200)
         this.isLoadedOnce = true
       } catch (error) {
         console.error('Failed to fetch contacts:', error)

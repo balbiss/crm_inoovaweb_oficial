@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import api from '../api'
+import api, { fetchAllPages } from '../api'
 
 export const useAppointmentsStore = defineStore('appointments', {
   state: () => ({
@@ -18,7 +18,7 @@ export const useAppointmentsStore = defineStore('appointments', {
       
       try {
         const [resContacts, resProps, resAgents] = await Promise.all([
-          api.get('/contacts'),
+          fetchAllPages('/contacts', 200).then(data => ({ data })),
           api.get('/properties'),
           api.get('/agents')
         ])
