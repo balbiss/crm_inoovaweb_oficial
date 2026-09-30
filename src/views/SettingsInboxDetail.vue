@@ -90,6 +90,22 @@ const toggleAgent = async (agent) => {
   }
 }
 
+const condominiums = ref([])
+
+const fetchCondominiums = async () => {
+  try {
+    const response = await api.get('/condominiums')
+    condominiums.value = response.data
+  } catch (error) {
+    console.error('Failed to fetch condominiums:', error)
+  }
+}
+
+const toggleCondominium = (id) => {
+  const ids = inbox.value.ai_condominium_ids || []
+  inbox.value.ai_condominium_ids = ids.includes(id) ? ids.filter(i => i !== id) : [...ids, id]
+}
+
 const fetchGroups = async () => {
   try {
     const response = await api.get('/round_robin_groups')
@@ -103,6 +119,7 @@ onMounted(() => {
   fetchInbox()
   fetchAgents()
   fetchGroups()
+  fetchCondominiums()
 })
 
 const goBack = () => {
@@ -131,7 +148,10 @@ const saveSettings = async () => {
         followup_wait_time_minutes: inbox.value.followup_wait_time_minutes,
         followup_send_closing_message: inbox.value.followup_send_closing_message,
         followup_closing_message: inbox.value.followup_closing_message,
-        round_robin_group_id: inbox.value.round_robin_group_id
+        round_robin_group_id: inbox.value.round_robin_group_id,
+        ai_listing_scope: inbox.value.ai_listing_scope || 'all',
+        ai_condominium_ids: inbox.value.ai_condominium_ids || [],
+        ai_include_properties: inbox.value.ai_include_properties !== false
       }
     })
     Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Configurações salvas!', showConfirmButton: false, timer: 3000 })
@@ -308,6 +328,36 @@ const saveSettings = async () => {
                 <textarea class="form-input" v-model="inbox.ai_prompt" rows="12" placeholder="Ex: Você é a Ana, secretária inteligente da Imobiliária Alpha. Seu objetivo é pré-atender os leads de forma humanizada e amigável..."></textarea>
               </div>
             </div>
+
+            <div class="form-row" style="margin-top: 1.5rem;">
+              <div class="label-col" style="width: 100%">
+                <label>Empreendimentos que a IA deste número pode apresentar</label>
+                <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.25rem; margin-bottom: 1rem;">Use quando cada WhatsApp atende um empreendimento ou cidade diferente: a IA só vai mostrar informações e mandar fotos dos itens marcados aqui.</p>
+                <div class="scope-options">
+                  <label class="scope-option">
+                    <input type="radio" value="all" v-model="inbox.ai_listing_scope">
+                    Todos os imóveis e condomínios da conta
+                  </label>
+                  <label class="scope-option">
+                    <input type="radio" value="selected" v-model="inbox.ai_listing_scope">
+                    Somente os selecionados abaixo
+                  </label>
+                </div>
+                <div v-if="inbox.ai_listing_scope === 'selected'" class="condo-picker">
+                  <label v-for="condo in condominiums" :key="condo.id" class="condo-item">
+                    <input type="checkbox" :checked="(inbox.ai_condominium_ids || []).includes(condo.id)" @change="toggleCondominium(condo.id)">
+                    <span>{{ condo.name }}</span>
+                    <small v-if="condo.city">{{ condo.city }}</small>
+                  </label>
+                  <p v-if="condominiums.length === 0" class="condo-empty">Nenhum condomínio cadastrado.</p>
+                  <label class="condo-item condo-item-properties">
+                    <input type="checkbox" v-model="inbox.ai_include_properties">
+                    <span>Também oferecer imóveis avulsos (tela Imóveis)</span>
+                  </label>
+                  <p v-if="(inbox.ai_condominium_ids || []).length === 0 && !inbox.ai_include_properties" class="condo-warning">Nada marcado: a IA deste número não vai apresentar nem mandar fotos de nenhum imóvel.</p>
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="form-actions" style="margin-top: 2rem;">
@@ -429,6 +479,63 @@ const saveSettings = async () => {
 </template>
 
 <style lang="scss" scoped>
+.scope-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.scope-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.condo-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+}
+
+.condo-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  cursor: pointer;
+
+  small {
+    color: var(--text-muted);
+  }
+}
+
+.condo-item-properties {
+  margin-top: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.condo-empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
+.condo-warning {
+  margin: 0.25rem 0 0;
+  color: #d97706;
+  font-size: 0.85rem;
+}
+
 .page-container {
   display: flex;
   flex-direction: column;
