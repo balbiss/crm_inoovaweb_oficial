@@ -11,7 +11,7 @@ const isEditMode = computed(() => !!route.params.id)
 
 const form = ref({
   owner_name: '', owner_email: '', owner_phone: '', owner_phone_type: 'Celular',
-  usage_type: 'Residencial', property_type: 'Casa', condo_name: '',
+  code: '', usage_type: 'Residencial', property_type: 'Casa', condo_name: '',
   cep: '', street: '', number: '', neighborhood: '', city: '', state: '', country: 'Brasil',
   complement: '', reference_point: '', latitude: '', longitude: '', show_address_mode: 'Completo',
   listing_type: [], description: '',
@@ -263,6 +263,10 @@ const submitForm = async () => {
               <div class="input-group">
                 <label>Condomínio / Empreendimento</label>
                 <input type="text" v-model="form.condo_name">
+              </div>
+              <div class="input-group">
+                <label>Código do Imóvel</label>
+                <input type="text" v-model="form.code" placeholder="Ex: 1274 ou AP0001 (o mesmo do site/anúncio)">
               </div>
             </div>
           </section>
